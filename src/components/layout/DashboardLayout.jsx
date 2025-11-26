@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import {
     LayoutDashboard, Users, Map, Truck, ClipboardCheck,
-    Warehouse, History, BarChart3, Bell, Search, Menu, X, LogOut, ChevronDown
+    Warehouse, History, BarChart3, Bell, Search, Menu, X, LogOut, ChevronDown, Check, Trash2, Loader2, DollarSign
 } from 'lucide-react';
+import { useToast } from '../../context/ToastContext';
+import { useData } from '../../context/DataContext';
 import logo from '../../assets/angrologo.png';
 
 const SidebarItem = ({ icon: Icon, label, to, active }) => (
@@ -21,9 +23,25 @@ const SidebarItem = ({ icon: Icon, label, to, active }) => (
 
 const DashboardLayout = () => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+    const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+    const { notifications, markAsRead, clearNotifications } = useToast();
+    const { loading } = useData();
     const location = useLocation();
 
+    const unreadCount = notifications.filter(n => !n.read).length;
+
     const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
+
+    if (loading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gray-50">
+                <div className="text-center">
+                    <Loader2 className="h-12 w-12 text-green-600 animate-spin mx-auto mb-4" />
+                    <p className="text-gray-500 font-medium">Cargando sistema...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-gray-50 flex">
@@ -50,6 +68,7 @@ const DashboardLayout = () => {
                         <SidebarItem icon={Truck} label="Nueva Entrega" to="/dashboard/delivery" active={location.pathname.includes('delivery')} />
                         <SidebarItem icon={ClipboardCheck} label="Control Calidad" to="/dashboard/quality" active={location.pathname.includes('quality')} />
                         <SidebarItem icon={Warehouse} label="Almacenamiento" to="/dashboard/storage" active={location.pathname.includes('storage')} />
+                        <SidebarItem icon={DollarSign} label="Pagos" to="/dashboard/payments" active={location.pathname.includes('payments')} />
                         <SidebarItem icon={History} label="Historial" to="/dashboard/history" active={location.pathname.includes('history')} />
 
                         <div className="pt-4 pb-2 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">
@@ -97,10 +116,57 @@ const DashboardLayout = () => {
                         </div>
 
                         <div className="flex items-center gap-4">
-                            <button className="p-1 rounded-full text-gray-400 hover:text-gray-500 focus:outline-none relative">
-                                <Bell className="h-6 w-6" />
-                                <span className="absolute top-0 right-0 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white"></span>
-                            </button>
+                            <div className="relative">
+                                <button
+                                    onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+                                    className="p-1 rounded-full text-gray-400 hover:text-gray-500 focus:outline-none relative"
+                                >
+                                    <Bell className="h-6 w-6" />
+                                    {unreadCount > 0 && (
+                                        <span className="absolute top-0 right-0 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white"></span>
+                                    )}
+                                </button>
+
+                                {/* Notifications Dropdown */}
+                                {isNotificationsOpen && (
+                                    <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-50">
+                                        <div className="px-4 py-2 border-b border-gray-100 flex justify-between items-center">
+                                            <h3 className="font-semibold text-gray-900">Notificaciones</h3>
+                                            <div className="flex gap-2">
+                                                <button onClick={markAsRead} className="text-xs text-green-600 hover:text-green-700 font-medium" title="Marcar como leídas">
+                                                    <Check className="h-4 w-4" />
+                                                </button>
+                                                <button onClick={clearNotifications} className="text-xs text-red-600 hover:text-red-700 font-medium" title="Borrar todo">
+                                                    <Trash2 className="h-4 w-4" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div className="max-h-96 overflow-y-auto">
+                                            {notifications.length > 0 ? (
+                                                notifications.map((notification) => (
+                                                    <div key={notification.id} className={`px-4 py-3 hover:bg-gray-50 border-b border-gray-50 last:border-0 ${!notification.read ? 'bg-green-50/50' : ''}`}>
+                                                        <div className="flex gap-3">
+                                                            <div className={`mt-1 h-2 w-2 rounded-full flex-shrink-0 ${notification.type === 'success' ? 'bg-green-500' :
+                                                                notification.type === 'error' ? 'bg-red-500' : 'bg-blue-500'
+                                                                }`}></div>
+                                                            <div>
+                                                                <p className="text-sm text-gray-800">{notification.message}</p>
+                                                                <p className="text-xs text-gray-400 mt-1">
+                                                                    {new Date(notification.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <div className="px-4 py-8 text-center text-gray-500 text-sm">
+                                                    No tienes notificaciones
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                             <div className="h-8 w-px bg-gray-200 mx-2"></div>
                             <span className="text-sm text-gray-500 hidden sm:block">
                                 {new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}

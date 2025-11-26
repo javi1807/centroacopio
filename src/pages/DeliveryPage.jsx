@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Truck, Package, Scale, Calendar, CheckCircle, AlertCircle } from 'lucide-react';
+import { Truck, Package, Scale, Calendar, CheckCircle, AlertCircle, ArrowRight, DollarSign } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { useToast } from '../context/ToastContext';
 import { useNavigate } from 'react-router-dom';
+import ProcessSteps from '../components/ui/ProcessSteps';
 
 const DeliveryPage = () => {
     const { farmers, addDelivery } = useData();
@@ -17,7 +18,10 @@ const DeliveryPage = () => {
         notes: ''
     });
 
-    const handleSubmit = (e) => {
+    const [showSuccess, setShowSuccess] = useState(false);
+    const [lastDeliveryId, setLastDeliveryId] = useState(null);
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
 
         if (!formData.farmerId || !formData.weight) {
@@ -25,10 +29,66 @@ const DeliveryPage = () => {
             return;
         }
 
-        addDelivery(formData);
-        addToast('Entrega registrada exitosamente', 'success');
-        navigate('/dashboard');
+        // Find farmer name
+        const selectedFarmer = farmers.find(f => f.id === parseInt(formData.farmerId));
+        const deliveryData = {
+            ...formData,
+            farmer: selectedFarmer ? selectedFarmer.name : 'Desconocido'
+        };
+
+        const result = await addDelivery(deliveryData);
+        if (result) {
+            setLastDeliveryId(result.id);
+            setShowSuccess(true);
+            addToast('Entrega registrada exitosamente', 'success');
+        }
     };
+
+    const handleReset = () => {
+        setFormData({
+            farmerId: '',
+            product: 'Cacao',
+            weight: '',
+            date: new Date().toISOString().slice(0, 16),
+            notes: ''
+        });
+        setShowSuccess(false);
+    };
+
+    if (showSuccess) {
+        return (
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center animate-in fade-in zoom-in duration-300">
+                    <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <CheckCircle className="h-10 w-10 text-green-600" />
+                    </div>
+                    <h2 className="text-2xl font-bold text-gray-900 mb-2">¡Entrega Registrada!</h2>
+                    <p className="text-gray-500 mb-8">
+                        La entrega <span className="font-mono font-bold text-gray-900">{lastDeliveryId}</span> ha sido ingresada al sistema correctamente.
+                    </p>
+
+                    import ProcessSteps from '../components/ui/ProcessSteps';
+
+                    // ... (inside component)
+
+                    <div className="space-y-3">
+                        <button
+                            onClick={() => navigate(`/dashboard/quality?id=${lastDeliveryId}`)}
+                            className="w-full py-3.5 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition-all shadow-lg shadow-green-200 flex items-center justify-center gap-2"
+                        >
+                            Ir a Control de Calidad <ArrowRight className="h-5 w-5" />
+                        </button>
+                        <button
+                            onClick={handleReset}
+                            className="w-full py-3.5 bg-white border border-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-50 transition-all"
+                        >
+                            Registrar Nueva Entrega
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">
@@ -37,33 +97,26 @@ const DeliveryPage = () => {
                 <p className="text-gray-500">Registro de nuevas entregas de productos</p>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                <div className="mb-8">
-                    <div className="flex items-center justify-between mb-4 relative">
-                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-gray-100 -z-10"></div>
-                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1/3 h-1 bg-green-100 -z-10"></div>
-
-                        <div className="flex flex-col items-center gap-2 bg-white px-2">
-                            <div className="w-10 h-10 rounded-full bg-green-600 text-white flex items-center justify-center font-bold shadow-lg shadow-green-200">1</div>
-                            <span className="font-bold text-sm text-gray-900">Datos de Entrega</span>
-                        </div>
-                        <div className="flex flex-col items-center gap-2 bg-white px-2 opacity-50">
-                            <div className="w-10 h-10 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center font-bold border border-gray-200">2</div>
-                            <span className="font-medium text-sm text-gray-500">Control de Calidad</span>
-                        </div>
-                        <div className="flex flex-col items-center gap-2 bg-white px-2 opacity-50">
-                            <div className="w-10 h-10 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center font-bold border border-gray-200">3</div>
-                            <span className="font-medium text-sm text-gray-500">Almacenamiento</span>
-                        </div>
-                    </div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* Progress Steps */}
+                <div className="lg:col-span-3">
+                    <ProcessSteps currentStep={1} />
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-6 max-w-4xl mx-auto">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Main Form */}
+                <div className="lg:col-span-2">
+                    <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 space-y-8">
+                        <div className="border-b border-gray-100 pb-6">
+                            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-1">
+                                <Truck className="h-5 w-5 text-green-600" />
+                                Información del Proveedor
+                            </h3>
+                            <p className="text-sm text-gray-500">Seleccione el agricultor que realiza la entrega</p>
+                        </div>
+
                         <div className="space-y-6">
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-2">
-                                    <Truck className="inline h-4 w-4 mr-2 text-green-600" />
                                     Agricultor *
                                 </label>
                                 <select
@@ -78,10 +131,19 @@ const DeliveryPage = () => {
                                     ))}
                                 </select>
                             </div>
+                        </div>
 
+                        <div className="border-b border-gray-100 pb-6 pt-2">
+                            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-1">
+                                <Package className="h-5 w-5 text-blue-600" />
+                                Detalles del Producto
+                            </h3>
+                            <p className="text-sm text-gray-500">Especifique el peso y fecha de la entrega</p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-2">
-                                    <Scale className="inline h-4 w-4 mr-2 text-blue-600" />
                                     Peso (kg) *
                                 </label>
                                 <div className="relative">
@@ -97,12 +159,9 @@ const DeliveryPage = () => {
                                     <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-medium">kg</span>
                                 </div>
                             </div>
-                        </div>
 
-                        <div className="space-y-6">
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-2">
-                                    <Calendar className="inline h-4 w-4 mr-2 text-purple-600" />
                                     Fecha de Entrega *
                                 </label>
                                 <input
@@ -113,39 +172,67 @@ const DeliveryPage = () => {
                                     required
                                 />
                             </div>
+
+
+
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-2">Observaciones</label>
+                            <textarea
+                                rows="3"
+                                value={formData.notes}
+                                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none bg-gray-50 focus:bg-white transition-all resize-none"
+                                placeholder="Observaciones adicionales..."
+                            ></textarea>
+                        </div>
+
+                        <div className="flex gap-4 pt-4">
+                            <button
+                                type="button"
+                                onClick={() => navigate('/dashboard')}
+                                className="px-6 py-3 border border-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-50 transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                type="submit"
+                                className="flex-1 px-6 py-3 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition-all shadow-lg shadow-green-200 hover:shadow-green-300 flex items-center justify-center gap-2"
+                            >
+                                <CheckCircle className="h-5 w-5" />
+                                Registrar Entrega
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                {/* Info / Help Panel */}
+                <div className="lg:col-span-1 space-y-6">
+                    <div className="bg-blue-50 rounded-xl p-6 border border-blue-100">
+                        <div className="flex items-start gap-3">
+                            <AlertCircle className="h-6 w-6 text-blue-600 shrink-0" />
+                            <div>
+                                <h4 className="font-bold text-blue-900 mb-1">Procedimiento</h4>
+                                <p className="text-sm text-blue-800 leading-relaxed">
+                                    Recuerde verificar el peso en la báscula antes de registrar. El proceso de calidad se realizará inmediatamente después.
+                                </p>
+                            </div>
                         </div>
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-bold text-gray-700 mb-2">Observaciones</label>
-                        <textarea
-                            rows="3"
-                            value={formData.notes}
-                            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none bg-gray-50 focus:bg-white transition-all resize-none"
-                            placeholder="Observaciones adicionales sobre la entrega..."
-                        ></textarea>
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                        <h4 className="font-bold text-gray-900 mb-4">Resumen Reciente</h4>
+                        <div className="space-y-4">
+                            {/* Placeholder for recent activity */}
+                            <div className="text-sm text-gray-500 text-center py-4">
+                                Las últimas entregas aparecerán aquí
+                            </div>
+                        </div>
                     </div>
-
-                    <div className="flex gap-4 pt-6 border-t border-gray-100">
-                        <button
-                            type="button"
-                            onClick={() => navigate('/dashboard')}
-                            className="px-6 py-3 border border-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-50 transition-colors"
-                        >
-                            Cancelar
-                        </button>
-                        <button
-                            type="submit"
-                            className="flex-1 px-6 py-3 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition-all shadow-lg shadow-green-200 hover:shadow-green-300 flex items-center justify-center gap-2"
-                        >
-                            <CheckCircle className="h-5 w-5" />
-                            Registrar Entrega
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
+                </div>
+            </div >
+        </div >
     );
 };
 

@@ -12,6 +12,7 @@ import QualityControlPage from './pages/QualityControlPage';
 import StoragePage from './pages/StoragePage';
 import HistoryPage from './pages/HistoryPage';
 import ReportsPage from './pages/ReportsPage';
+import PaymentsPage from './pages/PaymentsPage';
 import DashboardLayout from './components/layout/DashboardLayout';
 
 function App() {
@@ -29,6 +30,7 @@ function App() {
               <Route path="delivery" element={<DeliveryPage />} />
               <Route path="quality" element={<QualityControlPage />} />
               <Route path="storage" element={<StoragePage />} />
+              <Route path="payments" element={<PaymentsPage />} />
               <Route path="history" element={<HistoryPage />} />
               <Route path="reports" element={<ReportsPage />} />
             </Route>

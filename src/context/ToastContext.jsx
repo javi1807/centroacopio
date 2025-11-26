@@ -8,10 +8,17 @@ export const useToast = () => useContext(ToastContext);
 
 export const ToastProvider = ({ children }) => {
     const [toasts, setToasts] = useState([]);
+    const [notifications, setNotifications] = useState([
+        { id: 1, message: 'Bienvenido a AgroSync', type: 'info', read: false, date: new Date().toISOString() }
+    ]);
 
     const addToast = useCallback((message, type = 'success') => {
         const id = Date.now();
         setToasts((prev) => [...prev, { id, message, type }]);
+
+        // Add to notification history
+        setNotifications(prev => [{ id, message, type, read: false, date: new Date().toISOString() }, ...prev]);
+
         setTimeout(() => {
             removeToast(id);
         }, 3000);
@@ -21,8 +28,16 @@ export const ToastProvider = ({ children }) => {
         setToasts((prev) => prev.filter((toast) => toast.id !== id));
     }, []);
 
+    const markAsRead = useCallback(() => {
+        setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    }, []);
+
+    const clearNotifications = useCallback(() => {
+        setNotifications([]);
+    }, []);
+
     return (
-        <ToastContext.Provider value={{ addToast }}>
+        <ToastContext.Provider value={{ addToast, notifications, markAsRead, clearNotifications }}>
             {children}
             <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
                 <AnimatePresence>
@@ -33,8 +48,8 @@ export const ToastProvider = ({ children }) => {
                             animate={{ opacity: 1, x: 0 }}
                             exit={{ opacity: 0, x: 20 }}
                             className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border min-w-[300px] ${toast.type === 'success' ? 'bg-white border-green-500 text-gray-800' :
-                                    toast.type === 'error' ? 'bg-white border-red-500 text-gray-800' :
-                                        'bg-white border-blue-500 text-gray-800'
+                                toast.type === 'error' ? 'bg-white border-red-500 text-gray-800' :
+                                    'bg-white border-blue-500 text-gray-800'
                                 }`}
                         >
                             {toast.type === 'success' && <CheckCircle className="h-5 w-5 text-green-500" />}
