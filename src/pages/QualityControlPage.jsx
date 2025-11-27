@@ -29,7 +29,9 @@ const QualityControlPage = () => {
         netWeight: 0,
         discountImpurity: 0,
         discountHumidity: 0,
-        penaltyDamage: 0
+        penaltyDamage: 0,
+        dryMatterWeight: 0,
+        excessHumidity: 0
     });
 
     useEffect(() => {
@@ -43,18 +45,31 @@ const QualityControlPage = () => {
             const impurity = parseFloat(formData.impurities) || 0;
             const discountImpurity = grossWeight * (impurity / 100);
 
-            // Humidity: Deduct excess over 7.5%
+            // Humidity: ICCO Method - Adjust weight to standard moisture content (7.5%)
             const humidity = parseFloat(formData.humidity) || 0;
-            const excessHumidity = Math.max(0, humidity - 7.5);
-            const discountHumidity = grossWeight * (excessHumidity / 100);
+            const standardMoisture = 7.5;
+            let adjustedWeight = grossWeight;
+            let discountHumidity = 0;
+            let dryMatterWeight = grossWeight;
 
-            const netWeight = grossWeight - discountImpurity - discountHumidity;
+            if (humidity > standardMoisture) {
+                // Calculate dry matter weight (weight without water)
+                dryMatterWeight = grossWeight * (1 - humidity / 100);
+
+                // Calculate adjusted weight at standard moisture (7.5%)
+                adjustedWeight = dryMatterWeight / (1 - standardMoisture / 100);
+
+                // Discount is the difference
+                discountHumidity = grossWeight - adjustedWeight;
+            }
+
+            const netWeight = adjustedWeight - discountImpurity;
 
             // 2. Calculate Final Price
-            // Damaged: Penalty if > 2% (e.g., 2% of price per 1% excess damage)
+            // Damaged: Penalty if > 2% (e.g., 5% of price per 1% excess damage)
             const damaged = parseFloat(formData.damaged) || 0;
             const excessDamage = Math.max(0, damaged - 2);
-            const penaltyDamage = basePrice * (excessDamage * 0.05); // 5% penalty per excess point
+            const penaltyDamage = basePrice * (excessDamage * 0.05);
             const finalPrice = Math.max(0, basePrice - penaltyDamage);
 
             const total = (finalPrice * netWeight).toFixed(2);
@@ -65,12 +80,15 @@ const QualityControlPage = () => {
                 netWeight,
                 discountImpurity,
                 discountHumidity,
-                penaltyDamage
+                penaltyDamage,
+                dryMatterWeight,
+                excessHumidity: Math.max(0, humidity - standardMoisture)
             });
         } else {
             setCalculatedPayment({
                 price: 0, total: 0, netWeight: 0,
-                discountImpurity: 0, discountHumidity: 0, penaltyDamage: 0
+                discountImpurity: 0, discountHumidity: 0, penaltyDamage: 0,
+                dryMatterWeight: 0, excessHumidity: 0
             });
         }
     }, [formData, selectedDelivery, prices]);
@@ -110,9 +128,10 @@ const QualityControlPage = () => {
 
         const qualityNotes = `
 Calidad: ${formData.rating}
-Humedad: ${formData.humidity}%
+Humedad: ${formData.humidity}% ${formData.humidity && parseFloat(formData.humidity) > 7.5 ? `(Exceso: ${(parseFloat(formData.humidity) - 7.5).toFixed(2)}% - Método ICCO)` : '(Dentro de estándar)'}
 Impurezas: ${formData.impurities}%
 Daños: ${formData.damaged}%
+Método descuento: Ajuste a materia seca (ICCO)
 Notas: ${formData.notes}
         `.trim();
 
@@ -216,7 +235,18 @@ Notas: ${formData.notes}
                 {/* Evaluation Form */}
                 <div className="lg:col-span-2">
                     {selectedDelivery ? (
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
+                            {selectedDelivery.product_state === 'baba' && (
+                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                                    <p className="text-sm text-blue-800 font-medium">
+                                        ℹ️ <strong>Entrega en baba:</strong> {selectedDelivery.weight_fresh} kg frescos
+                                        convertidos a {selectedDelivery.weight} kg seco (Factor: {selectedDelivery.conversion_factor})
+                                    </p>
+                                    <p className="text-xs text-blue-600 mt-1">
+                                        El control de calidad se aplica al peso seco equivalente.
+                                    </p>
+                                </div>
+                            )}
                             <div className="flex items-center gap-3 mb-6 pb-6 border-b border-gray-100">
                                 <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center text-green-600">
                                     <ClipboardCheck className="h-6 w-6" />
@@ -230,7 +260,10 @@ Notas: ${formData.notes}
                             <form className="space-y-6">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Humedad (%)</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Humedad (%)
+                                            <span className="text-xs text-gray-500 font-normal ml-1">(Estándar: {'<'}7.5%)</span>
+                                        </label>
                                         <input
                                             type="number"
                                             name="humidity"
@@ -238,7 +271,22 @@ Notas: ${formData.notes}
                                             onChange={handleInputChange}
                                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
                                             placeholder="0.0"
+                                            step="0.1"
                                         />
+                                        {formData.humidity && parseFloat(formData.humidity) > 12 && (
+                                            <div className="mt-2 bg-red-50 border border-red-200 rounded-lg p-2">
+                                                <span className="text-red-700 text-xs font-medium">
+                                                    ⚠️ ALERTA: Humedad muy alta ({formData.humidity}%). Riesgo de moho y deterioro.
+                                                </span>
+                                            </div>
+                                        )}
+                                        {formData.humidity && parseFloat(formData.humidity) > 7.5 && parseFloat(formData.humidity) <= 12 && (
+                                            <div className="mt-2 bg-yellow-50 border border-yellow-200 rounded-lg p-2">
+                                                <span className="text-yellow-700 text-xs font-medium">
+                                                    ⚠️ Por encima del estándar. Se aplicará descuento por exceso de humedad.
+                                                </span>
+                                            </div>
+                                        )}
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-2">Impurezas (%)</label>
@@ -271,10 +319,14 @@ Notas: ${formData.notes}
                                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
                                         >
                                             <option value="">Seleccione...</option>
-                                            <option value="Premium">Premium</option>
-                                            <option value="Estándar">Estándar</option>
-                                            <option value="Básica">Básica</option>
-                                            <option value="Deficiente">Deficiente</option>
+                                            {prices
+                                                .sort((a, b) => b.price - a.price)
+                                                .map(priceLevel => (
+                                                    <option key={priceLevel.id} value={priceLevel.quality}>
+                                                        {priceLevel.quality} - S/ {priceLevel.price.toFixed(2)}/kg
+                                                    </option>
+                                                ))
+                                            }
                                         </select>
                                     </div>
                                 </div>
@@ -282,21 +334,32 @@ Notas: ${formData.notes}
                                 {formData.rating && (
                                     <div className="bg-green-50 rounded-xl p-4 border border-green-100">
                                         <h4 className="font-bold text-green-900 mb-3 flex items-center gap-2">
-                                            <span className="text-xl">💰</span> Cálculo Justo de Pago
+                                            <span className="text-xl">💰</span> Cálculo Justo de Pago (Método ICCO)
                                         </h4>
                                         <div className="space-y-3 text-sm">
                                             <div className="flex justify-between text-gray-600">
                                                 <span>Peso Bruto:</span>
-                                                <span>{selectedDelivery.weight} kg</span>
+                                                <span className="font-medium">{selectedDelivery.weight} kg</span>
                                             </div>
+
+                                            {formData.humidity && parseFloat(formData.humidity) > 7.5 && (
+                                                <>
+                                                    <div className="flex justify-between text-blue-600 text-xs italic">
+                                                        <span>Materia Seca ({(100 - parseFloat(formData.humidity)).toFixed(1)}%):</span>
+                                                        <span>{calculatedPayment.dryMatterWeight.toFixed(2)} kg</span>
+                                                    </div>
+                                                    <div className="flex justify-between text-red-500">
+                                                        <span>- Ajuste Humedad a 7.5% (exceso {calculatedPayment.excessHumidity.toFixed(2)}%):</span>
+                                                        <span>- {calculatedPayment.discountHumidity.toFixed(2)} kg</span>
+                                                    </div>
+                                                </>
+                                            )}
+
                                             <div className="flex justify-between text-red-500">
                                                 <span>- Descuento Impurezas ({formData.impurities}%):</span>
                                                 <span>- {calculatedPayment.discountImpurity.toFixed(2)} kg</span>
                                             </div>
-                                            <div className="flex justify-between text-red-500">
-                                                <span>- Descuento Humedad (Exceso):</span>
-                                                <span>- {calculatedPayment.discountHumidity.toFixed(2)} kg</span>
-                                            </div>
+
                                             <div className="flex justify-between font-bold text-gray-900 border-t border-green-200 pt-2">
                                                 <span>Peso Neto a Pagar:</span>
                                                 <span>{calculatedPayment.netWeight.toFixed(2)} kg</span>
@@ -304,18 +367,20 @@ Notas: ${formData.notes}
 
                                             <div className="flex justify-between text-gray-600 mt-2">
                                                 <span>Precio Base ({formData.rating}):</span>
-                                                <span>S/. {prices.find(p => p.quality === formData.rating)?.price.toFixed(2)}</span>
+                                                <span className="font-semibold text-green-700">
+                                                    S/ {prices.find(p => p.quality === formData.rating)?.price.toFixed(2) || '0.00'}/kg
+                                                </span>
                                             </div>
                                             {calculatedPayment.penaltyDamage > 0 && (
                                                 <div className="flex justify-between text-red-500">
-                                                    <span>- Penalidad Daños (>2%):</span>
-                                                    <span>- S/. {calculatedPayment.penaltyDamage.toFixed(2)}</span>
+                                                    <span>- Penalidad Daños ({'>'}2%):</span>
+                                                    <span>- S/ {calculatedPayment.penaltyDamage.toFixed(2)}</span>
                                                 </div>
                                             )}
 
                                             <div className="flex justify-between items-center bg-white p-3 rounded-lg border border-green-200 mt-2">
                                                 <span className="font-bold text-green-800">TOTAL A PAGAR</span>
-                                                <span className="text-2xl font-bold text-green-600">S/. {calculatedPayment.total}</span>
+                                                <span className="text-2xl font-bold text-green-600">S/ {calculatedPayment.total}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -356,8 +421,9 @@ Notas: ${formData.notes}
                             <p className="text-lg font-medium">Seleccione una entrega para evaluar</p>
                             <p className="text-sm">Haga clic en un elemento de la lista izquierda</p>
                         </div>
-                    )}
-                </div>
+                    )
+                    }
+                </div >
             </div >
         </div >
     );

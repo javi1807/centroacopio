@@ -17,13 +17,13 @@ const PaymentsPage = () => {
     };
 
     const filteredPayments = payments.filter(payment => {
-        const matchesSearch = payment.farmerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            payment.reference.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesDate = filterDate ? payment.date.startsWith(filterDate) : true;
+        const matchesSearch = (payment.farmerName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (payment.reference || '').toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesDate = filterDate ? (payment.date || '').startsWith(filterDate) : true;
         return matchesSearch && matchesDate;
     });
 
-    const totalPaid = filteredPayments.reduce((acc, curr) => acc + curr.amount, 0);
+    const totalPaid = filteredPayments.reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
 
     return (
         <div className="space-y-6">
@@ -98,12 +98,12 @@ const PaymentsPage = () => {
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 font-medium text-gray-900">
-                                            {payment.farmerName}
+                                            {payment.farmerName || 'N/A'}
                                         </td>
                                         <td className="px-6 py-4 text-gray-600">
                                             <div className="flex flex-col">
-                                                <span className="font-medium text-gray-900">{payment.reference}</span>
-                                                <span className="text-xs text-gray-500">Entrega: {payment.deliveryId}</span>
+                                                <span className="font-medium text-gray-900">{payment.reference || 'Sin referencia'}</span>
+                                                <span className="text-xs text-gray-500">Entrega: {payment.deliveryId || 'N/A'}</span>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-gray-600">
@@ -112,7 +112,7 @@ const PaymentsPage = () => {
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 font-bold text-gray-900">
-                                            S/ {payment.amount.toFixed(2)}
+                                            S/ {(parseFloat(payment.amount) || 0).toFixed(2)}
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">

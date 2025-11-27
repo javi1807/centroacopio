@@ -115,7 +115,7 @@ const Dashboard = () => {
         user: d.farmer,
         action: `Entrega ${d.status.toLowerCase()}`,
         time: new Date(d.date).toLocaleDateString(),
-        type: d.status === 'Completado' || d.status === 'Almacenado' ? 'success' : d.status === 'Rechazado' ? 'error' : 'info'
+        type: d.status === 'Completado' ? 'success' : d.status === 'Almacenado' ? 'info' : d.status === 'Rechazado' ? 'error' : 'warning'
     }));
 
     return (
@@ -252,10 +252,11 @@ const Dashboard = () => {
                                     <td className="px-6 py-4 text-gray-600">{row.product}</td>
                                     <td className="px-6 py-4 text-gray-600">{row.weight}</td>
                                     <td className="px-6 py-4">
-                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${row.status === 'Almacenado' || row.status === 'Completado' ? 'bg-green-100 text-green-800' :
-                                            row.status === 'Pendiente' ? 'bg-yellow-100 text-yellow-800' :
-                                                row.status === 'En Calidad' ? 'bg-blue-100 text-blue-800' :
-                                                    'bg-red-100 text-red-800'
+                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${row.status === 'Completado' ? 'bg-green-100 text-green-800' :
+                                            row.status === 'Almacenado' ? 'bg-blue-100 text-blue-800' :
+                                                row.status === 'Pendiente' ? 'bg-yellow-100 text-yellow-800' :
+                                                    row.status === 'En Calidad' ? 'bg-indigo-100 text-indigo-800' :
+                                                        'bg-red-100 text-red-800'
                                             }`}>
                                             {row.status}
                                         </span>

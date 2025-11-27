@@ -6,13 +6,15 @@ import { useNavigate } from 'react-router-dom';
 import ProcessSteps from '../components/ui/ProcessSteps';
 
 const DeliveryPage = () => {
-    const { farmers, addDelivery } = useData();
+    const { farmers, lands, addDelivery } = useData();
     const { addToast } = useToast();
     const navigate = useNavigate();
 
     const [formData, setFormData] = useState({
         farmerId: '',
+        landId: '',
         product: 'Cacao',
+        product_state: 'seco',
         weight: '',
         date: new Date().toISOString().slice(0, 16), // Current date-time for input
         notes: ''
@@ -24,7 +26,7 @@ const DeliveryPage = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        if (!formData.farmerId || !formData.weight) {
+        if (!formData.farmerId || !formData.weight || !formData.landId) {
             addToast('Por favor complete todos los campos obligatorios', 'error');
             return;
         }
@@ -47,13 +49,20 @@ const DeliveryPage = () => {
     const handleReset = () => {
         setFormData({
             farmerId: '',
+            landId: '',
             product: 'Cacao',
+            product_state: 'seco',
             weight: '',
             date: new Date().toISOString().slice(0, 16),
             notes: ''
         });
         setShowSuccess(false);
     };
+
+    // Calculate dry weight equivalent for wet cocoa
+    const weightDryEquivalent = formData.product_state === 'baba'
+        ? (parseFloat(formData.weight) * 0.38).toFixed(2)
+        : formData.weight;
 
     if (showSuccess) {
         return (
@@ -67,9 +76,6 @@ const DeliveryPage = () => {
                         La entrega <span className="font-mono font-bold text-gray-900">{lastDeliveryId}</span> ha sido ingresada al sistema correctamente.
                     </p>
 
-                    import ProcessSteps from '../components/ui/ProcessSteps';
-
-                    // ... (inside component)
 
                     <div className="space-y-3">
                         <button
@@ -133,6 +139,25 @@ const DeliveryPage = () => {
                             </div>
                         </div>
 
+                        {formData.farmerId && (
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-2">
+                                    Parcela / Terreno *
+                                </label>
+                                <select
+                                    value={formData.landId}
+                                    onChange={(e) => setFormData({ ...formData, landId: e.target.value })}
+                                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none bg-gray-50 focus:bg-white transition-all"
+                                    required
+                                >
+                                    <option value="">Seleccione una parcela</option>
+                                    {lands.filter(l => l.farmerId === parseInt(formData.farmerId)).map(land => (
+                                        <option key={land.id} value={land.id}>{land.name} - {land.location}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+
                         <div className="border-b border-gray-100 pb-6 pt-2">
                             <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-1">
                                 <Package className="h-5 w-5 text-blue-600" />
@@ -141,10 +166,24 @@ const DeliveryPage = () => {
                             <p className="text-sm text-gray-500">Especifique el peso y fecha de la entrega</p>
                         </div>
 
+                        <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-2">
+                                Estado del Producto *
+                            </label>
+                            <select
+                                value={formData.product_state}
+                                onChange={(e) => setFormData({ ...formData, product_state: e.target.value })}
+                                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none bg-gray-50 focus:bg-white transition-all"
+                            >
+                                <option value="seco">Cacao Seco (Fermentado y Secado)</option>
+                                <option value="baba">Cacao en Baba (Fresco con Pulpa)</option>
+                            </select>
+                        </div>
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-2">
-                                    Peso (kg) *
+                                    Peso {formData.product_state === 'baba' ? 'en Baba' : 'Seco'} (kg) *
                                 </label>
                                 <div className="relative">
                                     <input
@@ -158,6 +197,14 @@ const DeliveryPage = () => {
                                     />
                                     <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-medium">kg</span>
                                 </div>
+                                {formData.product_state === 'baba' && formData.weight && (
+                                    <div className="mt-2 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                        <span className="text-blue-700 text-sm font-medium">
+                                            💡 Equivalente en seco: <strong>{weightDryEquivalent} kg</strong>
+                                            <span className="text-xs ml-1">(Factor: 0.38)</span>
+                                        </span>
+                                    </div>
+                                )}
                             </div>
 
                             <div>

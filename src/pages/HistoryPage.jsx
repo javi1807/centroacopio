@@ -56,11 +56,25 @@ const HistoryPage = () => {
                                         </td>
                                         <td className="px-6 py-4 text-gray-600">{delivery.farmer}</td>
                                         <td className="px-6 py-4 text-gray-600">{delivery.product}</td>
-                                        <td className="px-6 py-4 text-gray-900 font-medium">{delivery.weight}</td>
+                                        <td className="px-6 py-4 text-gray-900 font-medium">
+                                            {delivery.product_state === 'baba' ? (
+                                                <div>
+                                                    <span className="font-bold">{delivery.weight_fresh} kg</span>
+                                                    <span className="text-xs text-gray-500 ml-1">(baba)</span>
+                                                    <div className="text-xs text-blue-600">
+                                                        ≈ {parseFloat(delivery.weight).toFixed(2)} kg seco
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <span className="font-bold">{delivery.weight} kg</span>
+                                            )}
+                                        </td>
                                         <td className="px-6 py-4">
                                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${delivery.status === 'Completado' ? 'bg-green-100 text-green-800' :
-                                                    delivery.status === 'Pendiente' ? 'bg-yellow-100 text-yellow-800' :
-                                                        'bg-gray-100 text-gray-800'
+                                                    delivery.status === 'Almacenado' ? 'bg-blue-100 text-blue-800' :
+                                                        delivery.status === 'Pendiente' ? 'bg-yellow-100 text-yellow-800' :
+                                                            delivery.status === 'En Calidad' ? 'bg-indigo-100 text-indigo-800' :
+                                                                'bg-red-100 text-red-800'
                                                 }`}>
                                                 {delivery.status}
                                             </span>

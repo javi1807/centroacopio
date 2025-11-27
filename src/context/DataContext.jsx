@@ -11,19 +11,21 @@ export const DataProvider = ({ children }) => {
     const [warehouses, setWarehouses] = useState([]);
     const [prices, setPrices] = useState([]);
     const [payments, setPayments] = useState([]);
+    const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
 
     // Fetch Initial Data
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [farmersRes, landsRes, deliveriesRes, warehousesRes, pricesRes, paymentsRes] = await Promise.all([
+                const [farmersRes, landsRes, deliveriesRes, warehousesRes, pricesRes, paymentsRes, productsRes] = await Promise.all([
                     fetch('http://localhost:3001/api/farmers'),
                     fetch('http://localhost:3001/api/lands'),
                     fetch('http://localhost:3001/api/deliveries'),
                     fetch('http://localhost:3001/api/warehouses'),
                     fetch('http://localhost:3001/api/prices'),
-                    fetch('http://localhost:3001/api/payments')
+                    fetch('http://localhost:3001/api/payments'),
+                    fetch('http://localhost:3001/api/products')
                 ]);
 
                 const farmersData = await farmersRes.json();
@@ -32,6 +34,7 @@ export const DataProvider = ({ children }) => {
                 const warehousesData = await warehousesRes.json();
                 const pricesData = await pricesRes.json();
                 const paymentsData = await paymentsRes.json();
+                const productsData = await productsRes.json();
 
                 setFarmers(farmersData.data || []);
                 setLands(landsData.data || []);
@@ -39,6 +42,7 @@ export const DataProvider = ({ children }) => {
                 setWarehouses(warehousesData.data || []);
                 setPrices(pricesData.data || []);
                 setPayments(paymentsData.data || []);
+                setProducts(productsData.data || []);
             } catch (error) {
                 console.error("Error fetching data:", error);
             } finally {
@@ -302,6 +306,7 @@ export const DataProvider = ({ children }) => {
             warehouses, addWarehouse, updateWarehouse, deleteWarehouse,
             prices, updatePrice,
             payments, addPayment, deletePayment,
+            products,
             getStats,
             loading
         }}>
