@@ -2,46 +2,46 @@
 
 AgroSync es una aplicación web moderna diseñada para optimizar el proceso de acopio, control de calidad y almacenamiento de Cacao. Construida con React y Node.js, ofrece una solución integral para cooperativas y centros de acopio.
 
-## 🚀 Características Principales
+##  Características Principales
 
-### 🌾 Gestión de Agricultores
+###  Gestión de Agricultores
 - Registro completo de productores.
 - Historial de entregas por agricultor.
 - Edición y eliminación de registros.
 
-### 🚚 Control de Entregas
+###  Control de Entregas
 - Registro de nuevas entregas de Cacao.
 - Asignación automática a terrenos y productores.
 - Generación de recibos digitales.
 
-### ✅ Control de Calidad
+###  Control de Calidad
 - Módulo de evaluación de lotes.
 - Registro de humedad, impurezas y granos dañados.
 - Aprobación o rechazo de lotes en tiempo real.
 
-### 📦 Almacenamiento e Inventario
+###  Almacenamiento e Inventario
 - Visualización de stock en tiempo real.
 - Gestión de ubicaciones en bodega con asignación específica (Rack/Estante).
 - Control de capacidad por bodega.
 
-### 💰 Gestión de Pagos
+###  Gestión de Pagos
 - Registro de pagos asociados a entregas.
 - Cálculo automático de montos basado en peso y calidad.
 - Historial de transacciones con trazabilidad completa.
 
-### 📊 Reportes y Análisis
+###  Reportes y Análisis
 - Dashboard interactivo con KPIs clave.
 - Gráficos de producción mensual.
 - Historial detallado de operaciones.
 
-## 🛠️ Tecnologías Utilizadas
+##  Tecnologías Utilizadas
 
 - **Frontend:** React 18, Vite, Tailwind CSS, Framer Motion, Lucide React, Recharts.
 - **Backend:** Node.js, Express.
 - **Base de Datos:** SQLite (Normalizada a 3NF).
 - **Estado:** Context API (Gestión de estado global).
 
-## 🗄️ Esquema de Base de Datos (3NF)
+##  Esquema de Base de Datos (3NF)
 
 El sistema utiliza una base de datos SQLite altamente estructurada y normalizada:
 
@@ -82,7 +82,7 @@ El sistema utiliza una base de datos SQLite altamente estructurada y normalizada
 - `PUT /api/warehouses/:id` - Modificar capacidad/nombre.
 - `DELETE /api/warehouses/:id` - Eliminar bodega.
 
-## 🔧 Instalación y Configuración
+##  Instalación y Configuración
 
 Sigue estos pasos para ejecutar el proyecto en tu máquina local:
 
@@ -103,7 +103,7 @@ Sigue estos pasos para ejecutar el proyecto en tu máquina local:
 4.  **Acceder:**
     Abre tu navegador en `http://localhost:5173`.
 
-## 📂 Estructura del Proyecto
+##  Estructura del Proyecto
 
 - `/src`: Código fuente del Frontend (React).
     - `/components`: Componentes reutilizables (Layouts, UI).
@@ -111,7 +111,7 @@ Sigue estos pasos para ejecutar el proyecto en tu máquina local:
     - `/context`: Lógica de estado global (Datos, Notificaciones).
 - `/server`: Código del Backend (API y Base de Datos).
 
-## 🎨 Principios UX/UI
+##  Principios UX/UI
 
 - **Diseño Limpio:** Interfaz minimalista enfocada en la usabilidad.
 - **Feedback Visual:** Notificaciones (Toasts) para todas las acciones importantes.
