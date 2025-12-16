@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useData } from '../../context/DataContext';
 import logo from '../../assets/angrologo.png';
 
 const LandingNavbar = () => {
     const [isScrolled, setIsScrolled] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const { isLoggedIn } = useData();
 
     useEffect(() => {
         const handleScroll = () => {
@@ -42,13 +44,13 @@ const LandingNavbar = () => {
                         </a>
                     ))}
                     <Link
-                        to="/login"
+                        to={isLoggedIn ? "/dashboard" : "/login"}
                         className={`px-5 py-2 rounded-full font-medium transition-all ${isScrolled
                             ? 'bg-green-600 text-white hover:bg-green-700'
                             : 'bg-white text-green-700 hover:bg-gray-100'
                             }`}
                     >
-                        Iniciar Sesión
+                        {isLoggedIn ? 'Ir al Dashboard' : 'Iniciar Sesión'}
                     </Link>
                 </div>
 
@@ -82,11 +84,11 @@ const LandingNavbar = () => {
                                 </a>
                             ))}
                             <Link
-                                to="/login"
+                                to={isLoggedIn ? "/dashboard" : "/login"}
                                 className="block w-full text-center px-5 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700"
                                 onClick={() => setIsMobileMenuOpen(false)}
                             >
-                                Iniciar Sesión
+                                {isLoggedIn ? 'Ir al Dashboard' : 'Iniciar Sesión'}
                             </Link>
                         </div>
                     </motion.div>

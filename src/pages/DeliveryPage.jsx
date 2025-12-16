@@ -1,22 +1,23 @@
 import React, { useState } from 'react';
-import { Truck, Package, Scale, Calendar, CheckCircle, AlertCircle, ArrowRight, DollarSign } from 'lucide-react';
+import { Truck, Package, Scale, Calendar, CheckCircle, AlertCircle, ArrowRight, DollarSign, Edit2, Trash2, X } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { useToast } from '../context/ToastContext';
 import { useNavigate } from 'react-router-dom';
 import ProcessSteps from '../components/ui/ProcessSteps';
 
 const DeliveryPage = () => {
-    const { farmers, lands, addDelivery } = useData();
+    const { farmers, lands, addDelivery, updateDelivery, deleteDelivery, deliveries } = useData();
     const { addToast } = useToast();
     const navigate = useNavigate();
 
+    const [editingId, setEditingId] = useState(null);
     const [formData, setFormData] = useState({
         farmerId: '',
         landId: '',
         product: 'Cacao',
         product_state: 'seco',
         weight: '',
-        date: new Date().toISOString().slice(0, 16), // Current date-time for input
+        date: new Date().toISOString().slice(0, 16),
         notes: ''
     });
 
@@ -31,18 +32,31 @@ const DeliveryPage = () => {
             return;
         }
 
-        // Find farmer name
-        const selectedFarmer = farmers.find(f => f.id === parseInt(formData.farmerId));
-        const deliveryData = {
-            ...formData,
-            farmer: selectedFarmer ? selectedFarmer.name : 'Desconocido'
-        };
+        // Find farmer name (optional if backend handles it via ID, but good for local optimistic update if needed)
+        // const selectedFarmer = farmers.find(f => f.id === parseInt(formData.farmerId));
 
-        const result = await addDelivery(deliveryData);
-        if (result) {
-            setLastDeliveryId(result.id);
-            setShowSuccess(true);
-            addToast('Entrega registrada exitosamente', 'success');
+        try {
+            if (editingId) {
+                // UPDATE MODE
+                const success = await updateDelivery(editingId, formData);
+                if (success) {
+                    addToast('Entrega actualizada correctamente', 'success');
+                    handleReset();
+                } else {
+                    addToast('Error al actualizar la entrega', 'error');
+                }
+            } else {
+                // CREATE MODE
+                const result = await addDelivery(formData);
+                if (result) {
+                    setLastDeliveryId(result.id);
+                    setShowSuccess(true);
+                    addToast('Entrega registrada exitosamente', 'success');
+                }
+            }
+        } catch (error) {
+            console.error(error);
+            addToast('Ocurrió un error inesperado', 'error');
         }
     };
 
@@ -56,7 +70,30 @@ const DeliveryPage = () => {
             date: new Date().toISOString().slice(0, 16),
             notes: ''
         });
+        setEditingId(null);
         setShowSuccess(false);
+    };
+
+    const handleEdit = (delivery) => {
+        setEditingId(delivery.id);
+        setFormData({
+            farmerId: delivery.farmerId || '',
+            landId: delivery.landId || '',
+            product: 'Cacao', // Simplified as per previous
+            product_state: delivery.product_state || 'seco',
+            weight: delivery.product_state === 'baba' ? delivery.weight_fresh : delivery.weight,
+            date: delivery.date ? delivery.date.slice(0, 16) : new Date().toISOString().slice(0, 16),
+            notes: delivery.notes || ''
+        });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const handleDelete = async (id) => {
+        if (window.confirm('¿Está seguro de eliminar esta entrega reciente?')) {
+            await deleteDelivery(id);
+            addToast('Entrega eliminada', 'info');
+            if (editingId === id) handleReset();
+        }
     };
 
     // Calculate dry weight equivalent for wet cocoa
@@ -99,8 +136,8 @@ const DeliveryPage = () => {
     return (
         <div className="space-y-6">
             <div>
-                <h1 className="text-2xl font-bold text-gray-900">Nueva Entrega</h1>
-                <p className="text-gray-500">Registro de nuevas entregas de productos</p>
+                <h1 className="text-2xl font-bold text-gray-900">{editingId ? 'Editar Entrega' : 'Nueva Entrega'}</h1>
+                <p className="text-gray-500">{editingId ? `Editando registro ${editingId}` : 'Registro de nuevas entregas de productos'}</p>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -111,7 +148,16 @@ const DeliveryPage = () => {
 
                 {/* Main Form */}
                 <div className="lg:col-span-2">
-                    <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 space-y-8">
+                    <form onSubmit={handleSubmit} className={`bg-white rounded-xl shadow-sm border p-8 space-y-8 transition-colors ${editingId ? 'border-blue-200 shadow-blue-50' : 'border-gray-100'}`}>
+                        {editingId && (
+                            <div className="bg-blue-50 text-blue-800 px-4 py-2 rounded-lg text-sm font-medium flex justify-between items-center">
+                                <span>✏️ Estás editando una entrega existente</span>
+                                <button type="button" onClick={handleReset} className="text-blue-600 hover:text-blue-900">
+                                    <X className="h-4 w-4" />
+                                </button>
+                            </div>
+                        )}
+
                         <div className="border-b border-gray-100 pb-6">
                             <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-1">
                                 <Truck className="h-5 w-5 text-green-600" />
@@ -236,19 +282,24 @@ const DeliveryPage = () => {
                         </div>
 
                         <div className="flex gap-4 pt-4">
-                            <button
-                                type="button"
-                                onClick={() => navigate('/dashboard')}
-                                className="px-6 py-3 border border-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-50 transition-colors"
-                            >
-                                Cancelar
-                            </button>
+                            {editingId && (
+                                <button
+                                    type="button"
+                                    onClick={handleReset}
+                                    className="px-6 py-3 border border-red-200 text-red-600 bg-red-50 rounded-xl font-bold hover:bg-red-100 transition-colors"
+                                >
+                                    Cancelar Edición
+                                </button>
+                            )}
                             <button
                                 type="submit"
-                                className="flex-1 px-6 py-3 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition-all shadow-lg shadow-green-200 hover:shadow-green-300 flex items-center justify-center gap-2"
+                                className={`flex-1 px-6 py-3 text-white rounded-xl font-bold transition-all shadow-lg flex items-center justify-center gap-2 ${editingId
+                                        ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-200'
+                                        : 'bg-green-600 hover:bg-green-700 shadow-green-200'
+                                    }`}
                             >
                                 <CheckCircle className="h-5 w-5" />
-                                Registrar Entrega
+                                {editingId ? 'Guardar Cambios' : 'Registrar Entrega'}
                             </button>
                         </div>
                     </form>
@@ -269,12 +320,67 @@ const DeliveryPage = () => {
                     </div>
 
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                        <h4 className="font-bold text-gray-900 mb-4">Resumen Reciente</h4>
+                        <div className="flex justify-between items-center mb-4">
+                            <h4 className="font-bold text-gray-900">Resumen Reciente</h4>
+                            <button
+                                onClick={() => navigate('/dashboard/history')}
+                                className="text-xs text-green-600 font-medium hover:text-green-700 hover:underline"
+                            >
+                                Ver todo
+                            </button>
+                        </div>
+
                         <div className="space-y-4">
-                            {/* Placeholder for recent activity */}
-                            <div className="text-sm text-gray-500 text-center py-4">
-                                Las últimas entregas aparecerán aquí
-                            </div>
+                            {deliveries.length > 0 ? (
+                                deliveries
+                                    .sort((a, b) => new Date(b.date) - new Date(a.date))
+                                    .slice(0, 5)
+                                    .map((delivery) => (
+                                        <div key={delivery.id} className="p-3 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100 transition-all group">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <p className="text-sm font-bold text-gray-900">{delivery.farmer}</p>
+                                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${delivery.status === 'Completado' ? 'bg-green-100 text-green-700' :
+                                                    delivery.status === 'En Calidad' ? 'bg-indigo-100 text-indigo-700' :
+                                                        delivery.status === 'Pendiente' ? 'bg-yellow-100 text-yellow-700' :
+                                                            'bg-gray-100 text-gray-600'
+                                                    }`}>
+                                                    {delivery.status}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2 text-xs text-gray-500">
+                                                    <span>
+                                                        {delivery.product_state === 'baba'
+                                                            ? `${delivery.weight_fresh} kg (Baba)`
+                                                            : `${delivery.weight} kg`}
+                                                    </span>
+                                                    <span>•</span>
+                                                    <span>{new Date(delivery.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                </div>
+                                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <button
+                                                        onClick={() => handleEdit(delivery)}
+                                                        className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded"
+                                                        title="Editar"
+                                                    >
+                                                        <Edit2 className="h-3.5 w-3.5" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDelete(delivery.id)}
+                                                        className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
+                                                        title="Eliminar"
+                                                    >
+                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))
+                            ) : (
+                                <div className="text-sm text-gray-500 text-center py-8 bg-gray-50 rounded-lg border border-dashed border-gray-200">
+                                    No hay entregas recientes
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

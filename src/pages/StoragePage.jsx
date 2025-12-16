@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Warehouse, Package, ArrowRight, CheckCircle, Plus, Settings, Edit2, Trash2, X, Save, AlertTriangle } from 'lucide-react';
+import { Warehouse, Package, ArrowRight, CheckCircle, Plus, Settings, Edit2, Trash2, X, Save, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import ProcessSteps from '../components/ui/ProcessSteps';
@@ -28,6 +28,16 @@ const StoragePage = () => {
         status: 'Activo'
     });
 
+    const [viewingWarehouse, setViewingWarehouse] = useState(null);
+
+    const [showWarehousesPanel, setShowWarehousesPanel] = useState(false);
+
+    // Pagination State
+    const [warehousePage, setWarehousePage] = useState(1);
+    const [inventoryPage, setInventoryPage] = useState(1);
+    const ITEMS_PER_PAGE_WAREHOUSES = 6;
+    const ITEMS_PER_PAGE_INVENTORY = 10;
+
     // Filter only stored items
     const storedItems = deliveries.filter(d => d.status === 'Almacenado' || d.status === 'Completado');
 
@@ -36,6 +46,11 @@ const StoragePage = () => {
         const itemsInWarehouse = storedItems.filter(item => item.warehouseId === warehouseId);
         const usedCapacity = itemsInWarehouse.reduce((acc, curr) => acc + parseFloat(curr.weight || 0), 0);
         return usedCapacity;
+    };
+
+    // Get items for a specific warehouse
+    const getWarehouseItems = (warehouseId) => {
+        return storedItems.filter(item => item.warehouseId === warehouseId);
     };
 
     // Auto-select from URL
@@ -65,13 +80,8 @@ const StoragePage = () => {
             const warehouse = warehouses.find(w => w.id === parseInt(selectedWarehouseId));
             if (!warehouse) return;
 
-            // Check capacity
             const currentUsed = getWarehouseStats(warehouse.id);
             const itemWeight = parseFloat(selectedItem.weight);
-
-            // If we are re-assigning to the same warehouse, subtract current weight first
-            // But for simplicity, we'll just check if adding it would overflow (ignoring if it's already there for now)
-            // A better check would be: if (item.warehouseId !== warehouse.id) ...
 
             if (currentUsed + itemWeight > warehouse.capacity) {
                 if (!window.confirm(`Advertencia: Esta asignación excederá la capacidad de la bodega ${warehouse.name}. ¿Desea continuar?`)) {
@@ -82,7 +92,7 @@ const StoragePage = () => {
             await updateDelivery(selectedItem.id, {
                 warehouseId: warehouse.id,
                 location_detail: location,
-                status: 'Almacenado' // Ensure status is updated
+                status: 'Almacenado'
             });
 
             setSelectedItem(null);
@@ -90,15 +100,12 @@ const StoragePage = () => {
             setSelectedWarehouseId('');
             setShowSuccess(true);
             addToast('Ubicación asignada correctamente', 'success');
-
-            // Clear URL param
             navigate('/dashboard/storage', { replace: true });
         } else {
             addToast('Por favor seleccione una bodega', 'error');
         }
     };
 
-    // Warehouse CRUD Handlers
     const handleSaveWarehouse = async (e) => {
         e.preventDefault();
         if (editingWarehouse) {
@@ -166,77 +173,134 @@ const StoragePage = () => {
                     <h1 className="text-2xl font-bold text-gray-900">Almacenamiento</h1>
                     <p className="text-gray-500">Gestión de inventarios y ubicaciones</p>
                 </div>
-                <button
-                    onClick={() => {
-                        setEditingWarehouse(null);
-                        resetWarehouseForm();
-                        setIsWarehouseModalOpen(true);
-                    }}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors shadow-sm"
-                >
-                    <Plus className="h-5 w-5" />
-                    Nueva Bodega
-                </button>
+                <div className="flex gap-3">
+                    <button
+                        onClick={() => setShowWarehousesPanel(!showWarehousesPanel)}
+                        className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg font-medium hover:bg-gray-700 transition-colors shadow-sm"
+                    >
+                        <Warehouse className="h-5 w-5" />
+                        {showWarehousesPanel ? 'Ocultar' : 'Ver'} Bodegas ({warehouses.length})
+                    </button>
+                    <button
+                        onClick={() => {
+                            setEditingWarehouse(null);
+                            resetWarehouseForm();
+                            setIsWarehouseModalOpen(true);
+                        }}
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors shadow-sm"
+                    >
+                        <Plus className="h-5 w-5" />
+                        Nueva Bodega
+                    </button>
+                </div>
             </div>
 
             {/* Process Steps - Always visible for consistency */}
             <ProcessSteps currentStep={3} />
 
-            {/* Warehouse Status Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {warehouses.map((wh) => {
-                    const used = getWarehouseStats(wh.id);
-                    const percentage = Math.min((used / wh.capacity) * 100, 100);
-                    const isFull = percentage >= 90;
-
-                    return (
-                        <div key={wh.id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 relative group">
-                            <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
-                                <button onClick={() => openEditWarehouse(wh)} className="p-1 text-gray-400 hover:text-blue-600">
-                                    <Edit2 className="h-4 w-4" />
-                                </button>
-                                <button onClick={() => handleDeleteWarehouse(wh.id)} className="p-1 text-gray-400 hover:text-red-600">
-                                    <Trash2 className="h-4 w-4" />
-                                </button>
+            {/* Warehouses Panel - Collapsible */}
+            <AnimatePresence>
+                {showWarehousesPanel && (
+                    <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="overflow-hidden"
+                    >
+                        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-100">
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                                    <Warehouse className="h-5 w-5 text-blue-600" />
+                                    Lugares de Almacenamiento
+                                </h3>
+                                <span className="text-sm text-gray-500">{warehouses.length} bodegas totales</span>
                             </div>
 
-                            <div className="flex justify-between items-start mb-4">
-                                <div className="p-3 bg-blue-50 rounded-lg text-blue-600">
-                                    <Warehouse className="h-6 w-6" />
-                                </div>
-                                <span className="text-xs font-medium bg-gray-100 px-2 py-1 rounded text-gray-600">{wh.type}</span>
-                            </div>
-                            <h3 className="text-lg font-bold text-gray-900 mb-1">{wh.name}</h3>
-                            <p className="text-xs text-gray-500 mb-4">{wh.location}</p>
+                            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                {warehouses
+                                    .slice((warehousePage - 1) * ITEMS_PER_PAGE_WAREHOUSES, warehousePage * ITEMS_PER_PAGE_WAREHOUSES)
+                                    .map((wh) => {
+                                        const used = getWarehouseStats(wh.id);
+                                        const percentage = Math.min((used / wh.capacity) * 100, 100);
+                                        const isFull = percentage >= 90;
 
-                            <div className="space-y-2">
-                                <div className="flex justify-between text-sm text-gray-600">
-                                    <span>Ocupación</span>
-                                    <span className={isFull ? 'text-red-600 font-bold' : ''}>{Math.round(percentage)}%</span>
-                                </div>
-                                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                                    <div
-                                        className={`h-full rounded-full transition-all duration-500 ${isFull ? 'bg-red-500' : 'bg-blue-500'}`}
-                                        style={{ width: `${percentage}%` }}
-                                    ></div>
-                                </div>
-                                <div className="flex justify-between text-xs text-gray-500">
-                                    <span>{used.toFixed(2)} kg</span>
-                                    <span>{wh.capacity} kg Total</span>
-                                </div>
+                                        return (
+                                            <div
+                                                key={wh.id}
+                                                className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 relative group hover:shadow-md transition-all cursor-pointer"
+                                                onClick={() => setViewingWarehouse(wh)}
+                                            >
+                                                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1" onClick={e => e.stopPropagation()}>
+                                                    <button onClick={() => openEditWarehouse(wh)} className="p-1 text-gray-400 hover:text-blue-600">
+                                                        <Edit2 className="h-3.5 w-3.5" />
+                                                    </button>
+                                                    <button onClick={() => handleDeleteWarehouse(wh.id)} className="p-1 text-gray-400 hover:text-red-600">
+                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                    </button>
+                                                </div>
+
+                                                <div className="flex items-start gap-3 mb-3">
+                                                    <div className="p-2 bg-blue-50 rounded text-blue-600">
+                                                        <Warehouse className="h-4 w-4" />
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <h4 className="font-bold text-gray-900 text-sm truncate">{wh.name}</h4>
+                                                        <p className="text-xs text-gray-500 truncate">{wh.type}</p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="space-y-1.5">
+                                                    <div className="flex justify-between text-xs text-gray-600">
+                                                        <span>Ocupación</span>
+                                                        <span className={isFull ? 'text-red-600 font-bold' : 'font-medium'}>{Math.round(percentage)}%</span>
+                                                    </div>
+                                                    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                                        <div
+                                                            className={`h-full rounded-full transition-all duration-500 ${isFull ? 'bg-red-500' : 'bg-blue-500'}`}
+                                                            style={{ width: `${percentage}%` }}
+                                                        ></div>
+                                                    </div>
+                                                    <div className="flex justify-between text-xs text-gray-500">
+                                                        <span>{used.toFixed(1)} kg</span>
+                                                        <span>{wh.capacity} kg</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
                             </div>
+
+                            {/* Warehouse Pagination */}
+                            {warehouses.length > ITEMS_PER_PAGE_WAREHOUSES && (
+                                <div className="flex justify-center items-center gap-4 mt-4">
+                                    <button
+                                        onClick={() => setWarehousePage(p => Math.max(1, p - 1))}
+                                        disabled={warehousePage === 1}
+                                        className="p-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        <ChevronLeft className="h-4 w-4 text-gray-600" />
+                                    </button>
+                                    <span className="text-xs font-medium text-gray-600">
+                                        Página {warehousePage} de {Math.ceil(warehouses.length / ITEMS_PER_PAGE_WAREHOUSES)}
+                                    </span>
+                                    <button
+                                        onClick={() => setWarehousePage(p => Math.min(Math.ceil(warehouses.length / ITEMS_PER_PAGE_WAREHOUSES), p + 1))}
+                                        disabled={warehousePage === Math.ceil(warehouses.length / ITEMS_PER_PAGE_WAREHOUSES)}
+                                        className="p-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        <ChevronRight className="h-4 w-4 text-gray-600" />
+                                    </button>
+                                </div>
+                            )}
                         </div>
-                    );
-                })}
-            </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
-            {/* Inventory Table */}
+            {/* Inventory Table (General) */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-                    <h3 className="font-bold text-gray-900">Inventario Actual</h3>
-                    <div className="flex gap-2">
-                        {/* Future: Add filters here */}
-                    </div>
+                    <h3 className="font-bold text-gray-900">Inventario General</h3>
                 </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm">
@@ -246,45 +310,39 @@ const StoragePage = () => {
                                 <th className="px-6 py-3 font-medium">Producto</th>
                                 <th className="px-6 py-3 font-medium">Agricultor</th>
                                 <th className="px-6 py-3 font-medium">Cantidad</th>
+                                <th className="px-6 py-3 font-medium">Bodega</th>
                                 <th className="px-6 py-3 font-medium">Ubicación</th>
-                                <th className="px-6 py-3 font-medium">Estado</th>
                                 <th className="px-6 py-3 font-medium">Acciones</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
                             {storedItems.length > 0 ? (
-                                storedItems.map((item, index) => (
-                                    <tr key={index} className="hover:bg-gray-50">
-                                        <td className="px-6 py-4 font-medium text-gray-900">{item.id}</td>
-                                        <td className="px-6 py-4 text-gray-600">{item.product}</td>
-                                        <td className="px-6 py-4 text-gray-600">
-                                            {item.farmer || farmers.find(f => f.id == item.farmerId)?.name || 'Desconocido'}
-                                        </td>
-                                        <td className="px-6 py-4 font-medium text-gray-900">{item.weight} kg</td>
-                                        <td className="px-6 py-4 text-gray-600">
-                                            {item.storage_location ? (
-                                                <span className="inline-flex items-center px-2 py-1 rounded-md bg-gray-100 text-gray-700 text-xs font-medium">
-                                                    {item.storage_location}
-                                                </span>
-                                            ) : (
-                                                <span className="text-gray-400 italic text-xs">Sin asignar</span>
-                                            )}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                                Almacenado
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <button
-                                                onClick={() => handleAssignLocation(item)}
-                                                className="text-blue-600 hover:text-blue-800 font-medium text-xs"
-                                            >
-                                                Editar Ubicación
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))
+                                storedItems
+                                    .slice((inventoryPage - 1) * ITEMS_PER_PAGE_INVENTORY, inventoryPage * ITEMS_PER_PAGE_INVENTORY)
+                                    .map((item, index) => (
+                                        <tr key={index} className="hover:bg-gray-50">
+                                            <td className="px-6 py-4 font-medium text-gray-900">{item.id}</td>
+                                            <td className="px-6 py-4 text-gray-600">{item.product}</td>
+                                            <td className="px-6 py-4 text-gray-600">
+                                                {item.farmer || farmers.find(f => f.id == item.farmerId)?.name || 'Desconocido'}
+                                            </td>
+                                            <td className="px-6 py-4 font-medium text-gray-900">{item.weight} kg</td>
+                                            <td className="px-6 py-4 text-gray-600">
+                                                {warehouses.find(w => w.id === item.warehouseId)?.name || '-'}
+                                            </td>
+                                            <td className="px-6 py-4 text-gray-600">
+                                                {item.location_detail || <span className="text-gray-400 italic text-xs">Sin asignar</span>}
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <button
+                                                    onClick={() => handleAssignLocation(item)}
+                                                    className="text-blue-600 hover:text-blue-800 font-medium text-xs"
+                                                >
+                                                    Editar Ubicación
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))
                             ) : (
                                 <tr>
                                     <td colSpan="7" className="px-6 py-12 text-center text-gray-500">
@@ -295,7 +353,136 @@ const StoragePage = () => {
                         </tbody>
                     </table>
                 </div>
+
+                {/* Inventory Pagination */}
+                {storedItems.length > ITEMS_PER_PAGE_INVENTORY && (
+                    <div className="p-4 border-t border-gray-100 flex justify-between items-center bg-gray-50">
+                        <span className="text-sm text-gray-500">
+                            Mostrando {(inventoryPage - 1) * ITEMS_PER_PAGE_INVENTORY + 1} a {Math.min(inventoryPage * ITEMS_PER_PAGE_INVENTORY, storedItems.length)} de {storedItems.length} registros
+                        </span>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => setInventoryPage(p => Math.max(1, p - 1))}
+                                disabled={inventoryPage === 1}
+                                className="p-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <ChevronLeft className="h-4 w-4 text-gray-600" />
+                            </button>
+                            <button
+                                onClick={() => setInventoryPage(p => Math.min(Math.ceil(storedItems.length / ITEMS_PER_PAGE_INVENTORY), p + 1))}
+                                disabled={inventoryPage === Math.ceil(storedItems.length / ITEMS_PER_PAGE_INVENTORY)}
+                                className="p-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <ChevronRight className="h-4 w-4 text-gray-600" />
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
+
+            {/* Warehouse Inventory Modal */}
+            <AnimatePresence>
+                {viewingWarehouse && (
+                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="bg-white rounded-xl shadow-xl max-w-3xl w-full flex flex-col max-h-[85vh]"
+                        >
+                            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-xl">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center text-blue-600 shadow-sm">
+                                        <Warehouse className="h-6 w-6" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-xl font-bold text-gray-900">{viewingWarehouse.name}</h3>
+                                        <p className="text-sm text-gray-500">{viewingWarehouse.type} · {viewingWarehouse.location}</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => setViewingWarehouse(null)}
+                                    className="p-2 bg-white rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors shadow-sm"
+                                >
+                                    <X className="h-6 w-6" />
+                                </button>
+                            </div>
+
+                            <div className="p-6 overflow-y-auto flex-1">
+                                <div className="flex gap-4 mb-6">
+                                    <div className="flex-1 bg-blue-50 p-4 rounded-xl border border-blue-100">
+                                        <p className="text-sm text-blue-600 mb-1">Ocupación Actual</p>
+                                        <p className="text-2xl font-bold text-blue-900">{getWarehouseStats(viewingWarehouse.id).toFixed(2)} kg</p>
+                                    </div>
+                                    <div className="flex-1 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                                        <p className="text-sm text-gray-600 mb-1">Capacidad Total</p>
+                                        <p className="text-2xl font-bold text-gray-900">{viewingWarehouse.capacity} kg</p>
+                                    </div>
+                                    <div className="flex-1 bg-green-50 p-4 rounded-xl border border-green-100">
+                                        <p className="text-sm text-green-600 mb-1">Disponible</p>
+                                        <p className="text-2xl font-bold text-green-900">{(viewingWarehouse.capacity - getWarehouseStats(viewingWarehouse.id)).toFixed(2)} kg</p>
+                                    </div>
+                                </div>
+
+                                <h4 className="font-bold text-gray-900 mb-4">Productos Almacenados</h4>
+
+                                {getWarehouseItems(viewingWarehouse.id).length > 0 ? (
+                                    <div className="border border-gray-100 rounded-xl overflow-hidden">
+                                        <table className="w-full text-left text-sm">
+                                            <thead className="bg-gray-50 text-gray-500">
+                                                <tr>
+                                                    <th className="px-4 py-3 font-medium">Lote</th>
+                                                    <th className="px-4 py-3 font-medium">Producto</th>
+                                                    <th className="px-4 py-3 font-medium">Peso</th>
+                                                    <th className="px-4 py-3 font-medium">Ubicación Detallada</th>
+                                                    <th className="px-4 py-3 font-medium">Acción</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-100">
+                                                {getWarehouseItems(viewingWarehouse.id).map((item) => (
+                                                    <tr key={item.id} className="hover:bg-gray-50">
+                                                        <td className="px-4 py-3 font-mono text-gray-900">{item.id}</td>
+                                                        <td className="px-4 py-3 text-gray-600">{item.product}</td>
+                                                        <td className="px-4 py-3 font-medium text-gray-900">{item.weight} kg</td>
+                                                        <td className="px-4 py-3 text-gray-600">
+                                                            {item.location_detail || <span className="text-gray-400 italic">General</span>}
+                                                        </td>
+                                                        <td className="px-4 py-3">
+                                                            <button
+                                                                onClick={() => {
+                                                                    setViewingWarehouse(null);
+                                                                    handleAssignLocation(item);
+                                                                }}
+                                                                className="text-blue-600 hover:text-blue-800 font-medium text-xs"
+                                                            >
+                                                                Mover
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-12 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                                        <Package className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                                        <p className="text-gray-500 font-medium">Esta bodega está vacía</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="p-4 border-t border-gray-100 bg-gray-50 rounded-b-xl flex justify-end">
+                                <button
+                                    onClick={() => setViewingWarehouse(null)}
+                                    className="px-6 py-2 bg-white border border-gray-200 text-gray-700 font-medium rounded-lg hover:bg-gray-50 shadow-sm"
+                                >
+                                    Cerrar
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
 
             {/* Location Assignment Modal */}
             <AnimatePresence>

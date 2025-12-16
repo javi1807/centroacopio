@@ -25,7 +25,7 @@ const DashboardLayout = () => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
     const { notifications, markAsRead, clearNotifications } = useToast();
-    const { loading } = useData();
+    const { loading, logout } = useData();
     const location = useLocation();
 
     const unreadCount = notifications.filter(n => !n.read).length;
@@ -78,7 +78,10 @@ const DashboardLayout = () => {
                     </div>
 
                     <div className="p-4 border-t border-gray-200">
-                        <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
+                        <button
+                            onClick={logout}
+                            className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer text-left"
+                        >
                             <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-bold">
                                 AD
                             </div>
@@ -87,7 +90,7 @@ const DashboardLayout = () => {
                                 <p className="text-xs text-gray-500 truncate">admin@agrosync.com</p>
                             </div>
                             <LogOut className="h-5 w-5 text-gray-400 hover:text-red-500" />
-                        </div>
+                        </button>
                     </div>
                 </div>
             </aside>

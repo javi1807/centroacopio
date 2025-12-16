@@ -146,6 +146,34 @@ db.serialize(() => {
     FOREIGN KEY(deliveryId) REFERENCES entregas(id)
   )`);
 
+
+  // ===== ÍNDICES PARA OPTIMIZACIÓN DE QUERIES =====
+
+  // Índices para agricultores
+  db.run(`CREATE INDEX IF NOT EXISTS idx_agricultores_status ON agricultores(status)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_agricultores_distrito ON agricultores(distrito_id)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_agricultores_document ON agricultores(document)`);
+
+  // Índices para terrenos
+  db.run(`CREATE INDEX IF NOT EXISTS idx_terrenos_farmer ON terrenos(farmerId)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_terrenos_status ON terrenos(status)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_terrenos_product ON terrenos(productId)`);
+
+  // Índices para entregas (crítico para rendimiento)
+  db.run(`CREATE INDEX IF NOT EXISTS idx_entregas_farmer ON entregas(farmerId)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_entregas_status ON entregas(status)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_entregas_date ON entregas(date DESC)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_entregas_warehouse ON entregas(warehouseId)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_entregas_product ON entregas(productId)`);
+
+  // Índices para pagos
+  db.run(`CREATE INDEX IF NOT EXISTS idx_pagos_delivery ON pagos(deliveryId)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_pagos_date ON pagos(date DESC)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_pagos_status ON pagos(status)`);
+
+  // Índices para almacenes
+  db.run(`CREATE INDEX IF NOT EXISTS idx_almacenes_status ON almacenes(status)`);
+
   // Seeding is now handled by seed.js
 });
 

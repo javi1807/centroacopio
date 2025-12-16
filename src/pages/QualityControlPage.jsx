@@ -118,6 +118,10 @@ const QualityControlPage = () => {
         });
     };
 
+    const handleCloseModal = () => {
+        setSelectedDelivery(null);
+    };
+
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
@@ -197,235 +201,298 @@ Notas: ${formData.notes}
 
             <ProcessSteps currentStep={2} />
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Pending Reviews List */}
-                <div className="lg:col-span-1 space-y-4">
+            {/* Pending Reviews Table */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="p-6 border-b border-gray-100">
                     <h3 className="font-bold text-gray-900">Pendientes de Evaluación ({pendingReviews.length})</h3>
-                    {pendingReviews.length > 0 ? (
-                        pendingReviews.map((review) => (
-                            <div
-                                key={review.id}
-                                onClick={() => handleSelect(review)}
-                                className={`p-4 rounded-xl shadow-sm border cursor-pointer transition-all ${selectedDelivery?.id === review.id
-                                    ? 'bg-green-50 border-green-500 ring-1 ring-green-500'
-                                    : 'bg-white border-gray-100 hover:border-green-300'
-                                    }`}
-                            >
-                                <div className="flex justify-between items-start mb-2">
-                                    <span className="font-bold text-gray-900">{review.id}</span>
-                                    <span className="text-xs text-gray-500">
-                                        {new Date(review.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                    </span>
-                                </div>
-                                <p className="text-sm font-medium text-gray-800">{review.farmer}</p>
-                                <p className="text-sm text-gray-500">{review.product} · {review.weight} kg</p>
-                                <button className="mt-3 w-full py-2 bg-white border border-green-200 text-green-700 text-sm font-medium rounded-lg hover:bg-green-50">
-                                    Evaluar
-                                </button>
-                            </div>
-                        ))
-                    ) : (
-                        <div className="bg-white p-8 rounded-xl border border-gray-100 text-center text-gray-500">
-                            <CheckCircle className="h-10 w-10 text-green-200 mx-auto mb-3" />
-                            <p>No hay entregas pendientes</p>
-                        </div>
-                    )}
                 </div>
 
-                {/* Evaluation Form */}
-                <div className="lg:col-span-2">
-                    {selectedDelivery ? (
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
-                            {selectedDelivery.product_state === 'baba' && (
-                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                                    <p className="text-sm text-blue-800 font-medium">
-                                        ℹ️ <strong>Entrega en baba:</strong> {selectedDelivery.weight_fresh} kg frescos
-                                        convertidos a {selectedDelivery.weight} kg seco (Factor: {selectedDelivery.conversion_factor})
-                                    </p>
-                                    <p className="text-xs text-blue-600 mt-1">
-                                        El control de calidad se aplica al peso seco equivalente.
-                                    </p>
-                                </div>
-                            )}
-                            <div className="flex items-center gap-3 mb-6 pb-6 border-b border-gray-100">
-                                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center text-green-600">
-                                    <ClipboardCheck className="h-6 w-6" />
+                {pendingReviews.length > 0 ? (
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left text-sm">
+                            <thead className="bg-gray-50 text-gray-600 font-medium border-b border-gray-100">
+                                <tr>
+                                    <th className="px-6 py-4">ID Entrega</th>
+                                    <th className="px-6 py-4">Fecha/Hora</th>
+                                    <th className="px-6 py-4">Agricultor</th>
+                                    <th className="px-6 py-4">Producto</th>
+                                    <th className="px-6 py-4">Peso</th>
+                                    <th className="px-6 py-4">Estado</th>
+                                    <th className="px-6 py-4 text-right">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {pendingReviews.map((review) => (
+                                    <tr key={review.id} className="hover:bg-gray-50 transition-colors">
+                                        <td className="px-6 py-4 font-mono font-medium text-gray-900">{review.id}</td>
+                                        <td className="px-6 py-4 text-gray-500">
+                                            {new Date(review.date).toLocaleDateString()} <span className="text-xs text-gray-400">{new Date(review.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                        </td>
+                                        <td className="px-6 py-4 font-medium text-gray-800">{review.farmer}</td>
+                                        <td className="px-6 py-4 text-gray-600">{review.product}</td>
+                                        <td className="px-6 py-4">
+                                            <span className="font-medium text-gray-900">{review.weight} kg</span>
+                                            {review.product_state === 'baba' && (
+                                                <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">Baba</span>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                                {review.status}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <button
+                                                onClick={() => handleSelect(review)}
+                                                className="inline-flex items-center justify-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors shadow-sm shadow-green-200"
+                                            >
+                                                Evaluar
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                ) : (
+                    <div className="p-12 text-center text-gray-500">
+                        <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <CheckCircle className="h-8 w-8 text-gray-300" />
+                        </div>
+                        <p className="text-lg font-medium text-gray-900">No hay entregas pendientes</p>
+                        <p className="text-sm">Todas las entregas han sido evaluadas.</p>
+                    </div>
+                )}
+            </div>
+
+            {/* Evaluation Modal */}
+            {selectedDelivery && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full my-8 animate-in fade-in zoom-in duration-200">
+                        <div className="flex items-center justify-between p-6 border-b border-gray-100">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center text-green-600">
+                                    <ClipboardCheck className="h-5 w-5" />
                                 </div>
                                 <div>
-                                    <h3 className="text-lg font-bold text-gray-900">Evaluación en Curso</h3>
-                                    <p className="text-sm text-gray-500">Entrega {selectedDelivery.id} - {selectedDelivery.product}</p>
+                                    <h3 className="text-xl font-bold text-gray-900">Evaluación de Calidad</h3>
+                                    <p className="text-sm text-gray-500">Entrega <span className="font-mono font-medium">{selectedDelivery.id}</span> - {selectedDelivery.product}</p>
                                 </div>
                             </div>
+                            <button
+                                onClick={handleCloseModal}
+                                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                            >
+                                <XCircle className="h-6 w-6" />
+                            </button>
+                        </div>
 
-                            <form className="space-y-6">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="p-6 md:p-8">
+                            {selectedDelivery.product_state === 'baba' && (
+                                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-8 flex items-start gap-3">
+                                    <div className="text-2xl">ℹ️</div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Humedad (%)
-                                            <span className="text-xs text-gray-500 font-normal ml-1">(Estándar: {'<'}7.5%)</span>
-                                        </label>
-                                        <input
-                                            type="number"
-                                            name="humidity"
-                                            value={formData.humidity}
-                                            onChange={handleInputChange}
-                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
-                                            placeholder="0.0"
-                                            step="0.1"
-                                        />
-                                        {formData.humidity && parseFloat(formData.humidity) > 12 && (
-                                            <div className="mt-2 bg-red-50 border border-red-200 rounded-lg p-2">
-                                                <span className="text-red-700 text-xs font-medium">
-                                                    ⚠️ ALERTA: Humedad muy alta ({formData.humidity}%). Riesgo de moho y deterioro.
-                                                </span>
+                                        <p className="text-sm text-blue-900 font-bold">
+                                            Entrega en baba
+                                        </p>
+                                        <p className="text-sm text-blue-800 mt-1">
+                                            Peso fresco: <strong>{selectedDelivery.weight_fresh} kg</strong> <br />
+                                            Convertido a seco: <strong>{selectedDelivery.weight} kg</strong> (Factor: {selectedDelivery.conversion_factor})
+                                        </p>
+                                        <p className="text-xs text-blue-600 mt-2 font-medium">
+                                            * El control de calidad se aplica al peso seco equivalente.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
+                            <form className="space-y-8">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div className="space-y-6">
+                                        <h4 className="font-bold text-gray-900 border-b pb-2">Parámetros de Calidad</h4>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Humedad (%)
+                                                <span className="text-xs text-gray-500 font-normal ml-1">(Estándar: {'<'}7.5%)</span>
+                                            </label>
+                                            <div className="relative">
+                                                <input
+                                                    type="number"
+                                                    name="humidity"
+                                                    value={formData.humidity}
+                                                    onChange={handleInputChange}
+                                                    className="w-full pl-4 pr-12 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition-all"
+                                                    placeholder="0.0"
+                                                    step="0.1"
+                                                />
+                                                <span className="absolute right-4 top-3.5 text-gray-400 text-sm">%</span>
+                                            </div>
+                                            {formData.humidity && parseFloat(formData.humidity) > 12 && (
+                                                <div className="mt-2 bg-red-50 border border-red-200 rounded-lg p-2 text-xs text-red-700 font-medium flex gap-2 items-center">
+                                                    <AlertTriangle className="h-4 w-4" /> Riesgo de moho y deterioro.
+                                                </div>
+                                            )}
+                                            {formData.humidity && parseFloat(formData.humidity) > 7.5 && parseFloat(formData.humidity) <= 12 && (
+                                                <div className="mt-2 bg-yellow-50 border border-yellow-200 rounded-lg p-2 text-xs text-yellow-700 font-medium flex gap-2 items-center">
+                                                    <AlertTriangle className="h-4 w-4" /> Se aplicará descuento por exceso.
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">Impurezas (%)</label>
+                                            <div className="relative">
+                                                <input
+                                                    type="number"
+                                                    name="impurities"
+                                                    value={formData.impurities}
+                                                    onChange={handleInputChange}
+                                                    className="w-full pl-4 pr-12 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition-all"
+                                                    placeholder="0.0"
+                                                />
+                                                <span className="absolute right-4 top-3.5 text-gray-400 text-sm">%</span>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">Granos Dañados (%)</label>
+                                            <div className="relative">
+                                                <input
+                                                    type="number"
+                                                    name="damaged"
+                                                    value={formData.damaged}
+                                                    onChange={handleInputChange}
+                                                    className="w-full pl-4 pr-12 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition-all"
+                                                    placeholder="0.0"
+                                                />
+                                                <span className="absolute right-4 top-3.5 text-gray-400 text-sm">%</span>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">Calificación Global</label>
+                                            <select
+                                                name="rating"
+                                                value={formData.rating}
+                                                onChange={handleInputChange}
+                                                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition-all bg-white"
+                                            >
+                                                <option value="">Seleccione calidad...</option>
+                                                {prices
+                                                    .sort((a, b) => b.price - a.price)
+                                                    .map(priceLevel => (
+                                                        <option key={priceLevel.id} value={priceLevel.quality}>
+                                                            {priceLevel.quality} - S/ {priceLevel.price.toFixed(2)}/kg
+                                                        </option>
+                                                    ))
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-6">
+                                        <h4 className="font-bold text-gray-900 border-b pb-2">Resultado Financiero</h4>
+
+                                        {formData.rating ? (
+                                            <div className="bg-green-50 rounded-2xl p-6 border border-green-100 h-full">
+                                                <h4 className="font-bold text-green-900 mb-6 flex items-center gap-2">
+                                                    <span className="text-2xl">💰</span> Cálculo Justo (ICCO)
+                                                </h4>
+                                                <div className="space-y-4 text-sm">
+                                                    <div className="flex justify-between text-gray-600">
+                                                        <span>Peso Bruto:</span>
+                                                        <span className="font-medium text-gray-900">{selectedDelivery.weight} kg</span>
+                                                    </div>
+
+                                                    {formData.humidity && parseFloat(formData.humidity) > 7.5 && (
+                                                        <div className="pl-3 border-l-2 border-red-200 space-y-1">
+                                                            <div className="flex justify-between text-gray-500 text-xs">
+                                                                <span>Materia Seca ({(100 - parseFloat(formData.humidity)).toFixed(1)}%):</span>
+                                                                <span>{calculatedPayment.dryMatterWeight.toFixed(2)} kg</span>
+                                                            </div>
+                                                            <div className="flex justify-between text-red-600 font-medium">
+                                                                <span>- Ajuste Humedad ({calculatedPayment.excessHumidity.toFixed(2)}% exc):</span>
+                                                                <span>- {calculatedPayment.discountHumidity.toFixed(2)} kg</span>
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {parseFloat(formData.impurities) > 0 && (
+                                                        <div className="flex justify-between text-red-600 font-medium">
+                                                            <span>- Descuento Impurezas ({formData.impurities}%):</span>
+                                                            <span>- {calculatedPayment.discountImpurity.toFixed(2)} kg</span>
+                                                        </div>
+                                                    )}
+
+                                                    <div className="flex justify-between font-bold text-gray-900 border-t border-green-200 pt-3">
+                                                        <span>Peso Neto a Pagar:</span>
+                                                        <span className="text-lg">{calculatedPayment.netWeight.toFixed(2)} kg</span>
+                                                    </div>
+
+                                                    <div className="flex justify-between text-gray-600 mt-4">
+                                                        <span>Precio Base ({formData.rating}):</span>
+                                                        <span className="font-semibold text-green-700">
+                                                            S/ {prices.find(p => p.quality === formData.rating)?.price.toFixed(2) || '0.00'}/kg
+                                                        </span>
+                                                    </div>
+
+                                                    {calculatedPayment.penaltyDamage > 0 && (
+                                                        <div className="flex justify-between text-red-600 font-medium">
+                                                            <span>- Penalidad Daños ({'>'}2%):</span>
+                                                            <span>- S/ {calculatedPayment.penaltyDamage.toFixed(2)}</span>
+                                                        </div>
+                                                    )}
+
+                                                    <div className="flex justify-between items-center bg-white p-4 rounded-xl border border-green-200 mt-4 shadow-sm">
+                                                        <span className="font-bold text-green-800">TOTAL A PAGAR</span>
+                                                        <span className="text-3xl font-bold text-green-600">S/ {calculatedPayment.total}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="bg-gray-50 rounded-2xl p-6 border border-gray-200 border-dashed h-full flex flex-col items-center justify-center text-center text-gray-400">
+                                                <div className="text-4xl mb-2">🧮</div>
+                                                <p>Ingrese los datos de calidad y seleccione una calificación para ver el cálculo.</p>
                                             </div>
                                         )}
-                                        {formData.humidity && parseFloat(formData.humidity) > 7.5 && parseFloat(formData.humidity) <= 12 && (
-                                            <div className="mt-2 bg-yellow-50 border border-yellow-200 rounded-lg p-2">
-                                                <span className="text-yellow-700 text-xs font-medium">
-                                                    ⚠️ Por encima del estándar. Se aplicará descuento por exceso de humedad.
-                                                </span>
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Impurezas (%)</label>
-                                        <input
-                                            type="number"
-                                            name="impurities"
-                                            value={formData.impurities}
-                                            onChange={handleInputChange}
-                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
-                                            placeholder="0.0"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Granos Dañados (%)</label>
-                                        <input
-                                            type="number"
-                                            name="damaged"
-                                            value={formData.damaged}
-                                            onChange={handleInputChange}
-                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
-                                            placeholder="0.0"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Calificación</label>
-                                        <select
-                                            name="rating"
-                                            value={formData.rating}
-                                            onChange={handleInputChange}
-                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
-                                        >
-                                            <option value="">Seleccione...</option>
-                                            {prices
-                                                .sort((a, b) => b.price - a.price)
-                                                .map(priceLevel => (
-                                                    <option key={priceLevel.id} value={priceLevel.quality}>
-                                                        {priceLevel.quality} - S/ {priceLevel.price.toFixed(2)}/kg
-                                                    </option>
-                                                ))
-                                            }
-                                        </select>
                                     </div>
                                 </div>
 
-                                {formData.rating && (
-                                    <div className="bg-green-50 rounded-xl p-4 border border-green-100">
-                                        <h4 className="font-bold text-green-900 mb-3 flex items-center gap-2">
-                                            <span className="text-xl">💰</span> Cálculo Justo de Pago (Método ICCO)
-                                        </h4>
-                                        <div className="space-y-3 text-sm">
-                                            <div className="flex justify-between text-gray-600">
-                                                <span>Peso Bruto:</span>
-                                                <span className="font-medium">{selectedDelivery.weight} kg</span>
-                                            </div>
-
-                                            {formData.humidity && parseFloat(formData.humidity) > 7.5 && (
-                                                <>
-                                                    <div className="flex justify-between text-blue-600 text-xs italic">
-                                                        <span>Materia Seca ({(100 - parseFloat(formData.humidity)).toFixed(1)}%):</span>
-                                                        <span>{calculatedPayment.dryMatterWeight.toFixed(2)} kg</span>
-                                                    </div>
-                                                    <div className="flex justify-between text-red-500">
-                                                        <span>- Ajuste Humedad a 7.5% (exceso {calculatedPayment.excessHumidity.toFixed(2)}%):</span>
-                                                        <span>- {calculatedPayment.discountHumidity.toFixed(2)} kg</span>
-                                                    </div>
-                                                </>
-                                            )}
-
-                                            <div className="flex justify-between text-red-500">
-                                                <span>- Descuento Impurezas ({formData.impurities}%):</span>
-                                                <span>- {calculatedPayment.discountImpurity.toFixed(2)} kg</span>
-                                            </div>
-
-                                            <div className="flex justify-between font-bold text-gray-900 border-t border-green-200 pt-2">
-                                                <span>Peso Neto a Pagar:</span>
-                                                <span>{calculatedPayment.netWeight.toFixed(2)} kg</span>
-                                            </div>
-
-                                            <div className="flex justify-between text-gray-600 mt-2">
-                                                <span>Precio Base ({formData.rating}):</span>
-                                                <span className="font-semibold text-green-700">
-                                                    S/ {prices.find(p => p.quality === formData.rating)?.price.toFixed(2) || '0.00'}/kg
-                                                </span>
-                                            </div>
-                                            {calculatedPayment.penaltyDamage > 0 && (
-                                                <div className="flex justify-between text-red-500">
-                                                    <span>- Penalidad Daños ({'>'}2%):</span>
-                                                    <span>- S/ {calculatedPayment.penaltyDamage.toFixed(2)}</span>
-                                                </div>
-                                            )}
-
-                                            <div className="flex justify-between items-center bg-white p-3 rounded-lg border border-green-200 mt-2">
-                                                <span className="font-bold text-green-800">TOTAL A PAGAR</span>
-                                                <span className="text-2xl font-bold text-green-600">S/ {calculatedPayment.total}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Observaciones</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Observaciones Adicionales</label>
                                     <textarea
                                         name="notes"
                                         value={formData.notes}
                                         onChange={handleInputChange}
                                         rows="3"
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
+                                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition-all"
+                                        placeholder="Notas sobre el estado del saco, olor, color, etc..."
                                     ></textarea>
                                 </div>
 
-                                <div className="flex gap-4 pt-4">
+                                <div className="flex gap-4 pt-4 border-t border-gray-100">
                                     <button
                                         type="button"
                                         onClick={() => handleSubmit('Rechazado')}
-                                        className="flex-1 py-3 bg-red-50 text-red-700 font-medium rounded-lg hover:bg-red-100 flex items-center justify-center gap-2"
+                                        className="flex-1 py-4 bg-red-50 text-red-700 font-bold rounded-xl hover:bg-red-100 transition-colors flex items-center justify-center gap-2"
                                     >
-                                        <XCircle className="h-5 w-5" /> Rechazar
+                                        <XCircle className="h-5 w-5" /> Rechazar Lote
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => handleSubmit('Completado')}
-                                        className="flex-[2] py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 flex items-center justify-center gap-2"
+                                        className="flex-[2] py-4 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition-all shadow-lg shadow-green-200 flex items-center justify-center gap-2"
                                     >
-                                        <CheckCircle className="h-5 w-5" /> Aprobar Calidad
+                                        <CheckCircle className="h-5 w-5" /> Aprobar Calidad y Pagar
                                     </button>
                                 </div>
                             </form>
                         </div>
-                    ) : (
-                        <div className="bg-gray-50 rounded-xl border border-gray-200 border-dashed p-12 flex flex-col items-center justify-center text-gray-400 h-full min-h-[400px]">
-                            <ClipboardCheck className="h-16 w-16 mb-4 opacity-50" />
-                            <p className="text-lg font-medium">Seleccione una entrega para evaluar</p>
-                            <p className="text-sm">Haga clic en un elemento de la lista izquierda</p>
-                        </div>
-                    )
-                    }
-                </div >
-            </div >
-        </div >
+                    </div>
+                </div>
+            )}
+        </div>
     );
 };
 

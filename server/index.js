@@ -1,13 +1,42 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const morgan = require('morgan');
 const db = require('./db');
+const { errorHandler } = require('./middleware/errorHandler');
 require('./seed'); // Run seeding logic
 
 const app = express();
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 
-app.use(cors());
+// Security middleware
+app.use(helmet());
+
+// CORS configuration
+app.use(cors({
+    origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+    credentials: true
+}));
+
+// Rate limiting
+const limiter = rateLimit({
+    windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
+    max: parseInt(process.env.RATE_LIMIT_MAX) || 100, // limit each IP to 100 requests per windowMs
+    message: 'Too many requests from this IP, please try again later.'
+});
+app.use('/api/', limiter);
+
+// Logging
+if (process.env.NODE_ENV === 'development') {
+    app.use(morgan('dev'));
+} else {
+    app.use(morgan('combined'));
+}
+
+// Body parsing
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
@@ -554,6 +583,11 @@ app.delete('/api/payments/:id', (req, res) => {
         });
 });
 
+// Error handling middleware (must be last)
+app.use(errorHandler);
+
 app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+    console.log(`🚀 Server running on port ${PORT}`);
+    console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`🔒 CORS origin: ${process.env.CORS_ORIGIN || 'http://localhost:5173'}`);
 });

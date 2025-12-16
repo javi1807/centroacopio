@@ -9,14 +9,40 @@ const LoginPage = () => {
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
 
-    const handleLogin = (e) => {
+    const [error, setError] = useState(null);
+
+    const handleLogin = async (e) => {
         e.preventDefault();
         setIsLoading(true);
-        // Simulate network request
-        setTimeout(() => {
-            setIsLoading(false);
+        setError(null);
+
+        const username = e.target.username.value;
+        const password = e.target.password.value;
+
+        try {
+            const response = await fetch('http://localhost:8000/api/token/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ username, password }),
+            });
+
+            if (!response.ok) {
+                throw new Error('Credenciales inválidas');
+            }
+
+            const data = await response.json();
+            // Store token (simple implementation, ideally use Context)
+            localStorage.setItem('accessToken', data.access);
+            localStorage.setItem('refreshToken', data.refresh);
+
             navigate('/dashboard');
-        }, 1500);
+        } catch (err) {
+            setError("Error al iniciar sesión: " + err.message);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
@@ -42,18 +68,25 @@ const LoginPage = () => {
                     <p className="text-gray-500 mt-2">Ingresa a tu cuenta para continuar</p>
                 </div>
 
+                {error && (
+                    <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-lg text-sm border border-red-100">
+                        {error}
+                    </div>
+                )}
+
                 <form onSubmit={handleLogin} className="space-y-6">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Usuario o Email</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Usuario</label>
                         <div className="relative">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                 <User className="h-5 w-5 text-gray-400" />
                             </div>
                             <input
                                 type="text"
+                                name="username"
                                 required
                                 className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all"
-                                placeholder="ej. usuario@agroacopio.com"
+                                placeholder="Usuario"
                             />
                         </div>
                     </div>
@@ -66,6 +99,7 @@ const LoginPage = () => {
                             </div>
                             <input
                                 type={showPassword ? "text" : "password"}
+                                name="password"
                                 required
                                 className="block w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all"
                                 placeholder="••••••••"
@@ -108,6 +142,12 @@ const LoginPage = () => {
                 </form>
 
                 <div className="mt-8 pt-6 border-t border-gray-100">
+                    <div className="text-center mb-4">
+                        <span className="text-gray-500 text-sm">¿No tienes cuenta? </span>
+                        <Link to="/register" className="text-green-600 font-bold hover:text-green-700 text-sm">
+                            Crear Cuenta
+                        </Link>
+                    </div>
                     <div className="text-sm text-center text-gray-500 mb-4">Credenciales de prueba (Demo)</div>
                     <div className="grid grid-cols-2 gap-3">
                         <button className="flex items-center justify-center gap-2 py-2 px-4 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-lg border border-gray-200 text-sm font-medium transition-colors">

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 
 const DataContext = createContext();
 
@@ -14,77 +14,107 @@ export const DataProvider = ({ children }) => {
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    // Fetch Initial Data
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const [farmersRes, landsRes, deliveriesRes, warehousesRes, pricesRes, paymentsRes, productsRes] = await Promise.all([
-                    fetch('http://localhost:3001/api/farmers'),
-                    fetch('http://localhost:3001/api/lands'),
-                    fetch('http://localhost:3001/api/deliveries'),
-                    fetch('http://localhost:3001/api/warehouses'),
-                    fetch('http://localhost:3001/api/prices'),
-                    fetch('http://localhost:3001/api/payments'),
-                    fetch('http://localhost:3001/api/products')
-                ]);
-
-                const farmersData = await farmersRes.json();
-                const landsData = await landsRes.json();
-                const deliveriesData = await deliveriesRes.json();
-                const warehousesData = await warehousesRes.json();
-                const pricesData = await pricesRes.json();
-                const paymentsData = await paymentsRes.json();
-                const productsData = await productsRes.json();
-
-                setFarmers(farmersData.data || []);
-                setLands(landsData.data || []);
-                setDeliveries(deliveriesData.data || []);
-                setWarehouses(warehousesData.data || []);
-                setPrices(pricesData.data || []);
-                setPayments(paymentsData.data || []);
-                setProducts(productsData.data || []);
-            } catch (error) {
-                console.error("Error fetching data:", error);
-            } finally {
-                setLoading(false);
-            }
+    // Helper to get auth headers
+    const getAuthHeaders = () => {
+        const token = localStorage.getItem('accessToken');
+        return token ? {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        } : {
+            'Content-Type': 'application/json'
         };
+    };
 
-        fetchData();
+    // Helper for authorized fetch
+    const authFetch = async (url, options = {}) => {
+        const headers = getAuthHeaders();
+        const res = await fetch(url, { ...options, headers: { ...headers, ...options.headers } });
+        if (res.status === 401) {
+            // Token expired or invalid
+            console.warn("Unauthorized access - redirecting to login");
+            // Optionally clear storage and redirect
+            // localStorage.removeItem('accessToken');
+            // window.location.href = '/login'; 
+        }
+        return res;
+    };
+
+    const fetchData = useCallback(async () => {
+        if (!localStorage.getItem('accessToken')) {
+            setLoading(false);
+            return;
+        }
+
+        try {
+            const [farmersRes, landsRes, deliveriesRes, warehousesRes, pricesRes, paymentsRes, productsRes] = await Promise.all([
+                authFetch('http://localhost:8000/api/farmers/'),
+                authFetch('http://localhost:8000/api/lands/'),
+                authFetch('http://localhost:8000/api/deliveries/'),
+                authFetch('http://localhost:8000/api/warehouses/'),
+                authFetch('http://localhost:8000/api/prices/'),
+                authFetch('http://localhost:8000/api/payments/'),
+                authFetch('http://localhost:8000/api/products/')
+            ]);
+
+            const farmersData = await farmersRes.json();
+            const landsData = await landsRes.json();
+            const deliveriesData = await deliveriesRes.json();
+            const warehousesData = await warehousesRes.json();
+            const pricesData = await pricesRes.json();
+            const paymentsData = await paymentsRes.json();
+            const productsData = await productsRes.json();
+
+            setFarmers(farmersData.data || []);
+            setLands(landsData.data || []);
+            setDeliveries(deliveriesData.data || []);
+            setWarehouses(warehousesData.data || []);
+            setPrices(pricesData.data || []);
+            setPayments(paymentsData.data || []);
+            setProducts(productsData.data || []);
+        } catch (error) {
+            console.error("Error fetching data:", error);
+        } finally {
+            setLoading(false);
+        }
     }, []);
 
+    // Fetch Initial Data on Mount
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
+
     // Actions
-    const addFarmer = async (farmer) => {
+    const addFarmer = useCallback(async (farmer) => {
         try {
-            const res = await fetch('http://localhost:3001/api/farmers', {
+            const res = await authFetch('http://localhost:8000/api/farmers/', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(farmer)
             });
             const data = await res.json();
             if (data.data) {
-                setFarmers([...farmers, data.data]);
+                setFarmers(prev => [...prev, data.data]);
                 return data.data;
             }
         } catch (error) {
             console.error("Error adding farmer:", error);
+            throw error;
         }
-    };
+    }, []);
 
-    const deleteFarmer = async (id) => {
+    const deleteFarmer = useCallback(async (id) => {
         try {
-            await fetch(`http://localhost:3001/api/farmers/${id}`, { method: 'DELETE' });
-            setFarmers(farmers.filter(f => f.id !== id));
+            await authFetch(`http://localhost:8000/api/farmers/${id}/`, { method: 'DELETE' });
+            setFarmers(prev => prev.filter(f => f.id !== id));
         } catch (error) {
             console.error("Error deleting farmer:", error);
+            throw error;
         }
-    };
+    }, []);
 
     const addLand = async (land) => {
         try {
-            const res = await fetch('http://localhost:3001/api/lands', {
+            const res = await authFetch('http://localhost:8000/api/lands/', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(land)
             });
             const data = await res.json();
@@ -99,15 +129,17 @@ export const DataProvider = ({ children }) => {
 
     const addDelivery = async (delivery) => {
         try {
-            const res = await fetch('http://localhost:3001/api/deliveries', {
+            const res = await authFetch('http://localhost:8000/api/deliveries/', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(delivery)
             });
             const data = await res.json();
-            if (data.data) {
-                setDeliveries([data.data, ...deliveries]);
+            // Backend returns object directly (e.g. {id: 1, ...}) or wrapped {data: ...} if we changed it.
+            // BaseViewSet only wraps LIST. Create returns object directly.
+            const newDelivery = data.data || data;
 
+            if (newDelivery && newDelivery.id) {
+                setDeliveries([newDelivery, ...deliveries]);
                 // Optimistically update farmer stats
                 setFarmers(farmers.map(f => {
                     if (f.id === parseInt(delivery.farmerId)) {
@@ -115,8 +147,7 @@ export const DataProvider = ({ children }) => {
                     }
                     return f;
                 }));
-
-                return data.data;
+                return newDelivery;
             }
         } catch (error) {
             console.error("Error adding delivery:", error);
@@ -125,9 +156,8 @@ export const DataProvider = ({ children }) => {
 
     const updateFarmer = async (id, updatedData) => {
         try {
-            const res = await fetch(`http://localhost:3001/api/farmers/${id}`, {
+            const res = await authFetch(`http://localhost:8000/api/farmers/${id}/`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(updatedData)
             });
             const data = await res.json();
@@ -143,7 +173,7 @@ export const DataProvider = ({ children }) => {
 
     const deleteLand = async (id) => {
         try {
-            await fetch(`http://localhost:3001/api/lands/${id}`, { method: 'DELETE' });
+            await authFetch(`http://localhost:8000/api/lands/${id}/`, { method: 'DELETE' });
             setLands(lands.filter(l => l.id !== id));
         } catch (error) {
             console.error("Error deleting land:", error);
@@ -152,9 +182,8 @@ export const DataProvider = ({ children }) => {
 
     const updateLand = async (id, updatedData) => {
         try {
-            const res = await fetch(`http://localhost:3001/api/lands/${id}`, {
+            const res = await authFetch(`http://localhost:8000/api/lands/${id}/`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(updatedData)
             });
             const data = await res.json();
@@ -170,7 +199,7 @@ export const DataProvider = ({ children }) => {
 
     const deleteDelivery = async (id) => {
         try {
-            await fetch(`http://localhost:3001/api/deliveries/${encodeURIComponent(id)}`, { method: 'DELETE' });
+            await authFetch(`http://localhost:8000/api/deliveries/${encodeURIComponent(id)}/`, { method: 'DELETE' });
             setDeliveries(deliveries.filter(d => d.id !== id));
         } catch (error) {
             console.error("Error deleting delivery:", error);
@@ -179,32 +208,37 @@ export const DataProvider = ({ children }) => {
 
     const updateDelivery = async (id, updates) => {
         try {
-            const response = await fetch(`http://localhost:3001/api/deliveries/${encodeURIComponent(id)}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+            const response = await authFetch(`http://localhost:8000/api/deliveries/${encodeURIComponent(id)}/`, {
+                method: 'PATCH',
                 body: JSON.stringify(updates)
             });
-            const result = await response.json();
-            if (result.message === 'success') {
+            // ... handle response (check specific status code if needed, defaults are usually OK if successful)
+            // Legacy wrapper returns {data: ...} or instance.
+            // Let's assume result ok.
+            if (response.ok) {
+                // If backend returns data, use it, else assume success
+                const result = await response.json();
+                // DRF standard for PATCH returns updated object directly, not wrapped in {message: success} usually.
+                // But our BaseViewSet wraps list? retrieve/update usually return object.
+                // Let's assume success if response.ok
+
                 setDeliveries(prev => prev.map(d => d.id === id ? { ...d, ...updates } : d));
-                // If warehouseId was updated, we might want to refresh to get the warehouseName joined
-                if (updates.warehouseId) {
-                    // Re-fetch deliveries to get the joined warehouseName
-                    const res = await fetch('http://localhost:3001/api/deliveries');
-                    const data = await res.json();
-                    if (data.data) setDeliveries(data.data);
-                }
+                if (updates.warehouseId) fetchData();
+                return true;
+            } else {
+                const errorText = await response.text();
+                console.error(`Error updating delivery ${id}: ${response.status}`, errorText);
             }
         } catch (error) {
             console.error("Error updating delivery:", error);
         }
+        return false;
     };
 
     const addWarehouse = async (warehouse) => {
         try {
-            const res = await fetch('http://localhost:3001/api/warehouses', {
+            const res = await authFetch('http://localhost:8000/api/warehouses/', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(warehouse)
             });
             const data = await res.json();
@@ -219,9 +253,8 @@ export const DataProvider = ({ children }) => {
 
     const updateWarehouse = async (id, updatedData) => {
         try {
-            const res = await fetch(`http://localhost:3001/api/warehouses/${id}`, {
+            const res = await authFetch(`http://localhost:8000/api/warehouses/${id}/`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(updatedData)
             });
             const data = await res.json();
@@ -237,7 +270,7 @@ export const DataProvider = ({ children }) => {
 
     const deleteWarehouse = async (id) => {
         try {
-            await fetch(`http://localhost:3001/api/warehouses/${id}`, { method: 'DELETE' });
+            await authFetch(`http://localhost:8000/api/warehouses/${id}/`, { method: 'DELETE' });
             setWarehouses(warehouses.filter(w => w.id !== id));
         } catch (error) {
             console.error("Error deleting warehouse:", error);
@@ -246,9 +279,8 @@ export const DataProvider = ({ children }) => {
 
     const updatePrice = async (quality, price) => {
         try {
-            const res = await fetch('http://localhost:3001/api/prices', {
+            const res = await authFetch('http://localhost:8000/api/prices_update', {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ quality, price })
             });
             const data = await res.json();
@@ -264,9 +296,8 @@ export const DataProvider = ({ children }) => {
 
     const addPayment = async (paymentData) => {
         try {
-            const response = await fetch('http://localhost:3001/api/payments', {
+            const response = await authFetch('http://localhost:8000/api/payments/', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(paymentData)
             });
             const result = await response.json();
@@ -282,20 +313,44 @@ export const DataProvider = ({ children }) => {
 
     const deletePayment = async (id) => {
         try {
-            await fetch(`http://localhost:3001/api/payments/${id}`, { method: 'DELETE' });
+            await authFetch(`http://localhost:8000/api/payments/${id}/`, { method: 'DELETE' });
             setPayments(payments.filter(p => p.id !== id));
         } catch (error) {
             console.error("Error deleting payment:", error);
         }
     };
 
-    const getStats = () => {
-        return {
-            activeFarmers: farmers.filter(f => f.status === 'Activo').length,
-            pendingDeliveries: deliveries.filter(d => d.status === 'Pendiente').length,
-            qualityCheck: deliveries.filter(d => d.status === 'En Calidad').length,
-            totalStored: deliveries.filter(d => d.status === 'Almacenado').reduce((acc, curr) => acc + parseFloat(curr.weight || 0), 0)
-        };
+    // Memoize computed stats
+    const stats = useMemo(() => ({
+        activeFarmers: farmers.filter(f => f.status === 'Activo').length,
+        pendingDeliveries: deliveries.filter(d => d.status === 'Pendiente').length,
+        qualityCheck: deliveries.filter(d => d.status === 'En Calidad').length,
+        totalStored: deliveries.filter(d => d.status === 'Almacenado').reduce((acc, curr) => acc + parseFloat(curr.weight || 0), 0)
+    }), [farmers, deliveries]);
+
+    const getStats = useCallback(() => stats, [stats]);
+
+    // Logic for auth state
+    const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('accessToken'));
+
+    const checkLogin = () => {
+        setIsLoggedIn(!!localStorage.getItem('accessToken'));
+    };
+
+    // Call checkLogin initially
+    useEffect(() => {
+        checkLogin();
+    }, []);
+
+    const logout = () => {
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        setIsLoggedIn(false);
+        // Optional: clear data
+        setFarmers([]);
+        setLands([]);
+        setDeliveries([]);
+        window.location.href = '/';
     };
 
     return (
@@ -308,7 +363,11 @@ export const DataProvider = ({ children }) => {
             payments, addPayment, deletePayment,
             products,
             getStats,
-            loading
+            loading,
+            // Expose a refresh function if needed
+            refreshData: fetchData,
+            // Auth exports
+            isLoggedIn, logout, checkLogin
         }}>
             {children}
         </DataContext.Provider>
