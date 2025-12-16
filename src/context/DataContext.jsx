@@ -14,6 +14,12 @@ export const DataProvider = ({ children }) => {
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
 
+    // Base URL configuration for Vercel/Production
+    // If VITE_API_URL is set (env), use it.
+    // If PROD build (Vercel), use relative path '' (to use same domain /api proxy)
+    // If DEV, use localhost:8000
+    const BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '' : 'http://localhost:8000');
+
     // Helper to get auth headers
     const getAuthHeaders = () => {
         const token = localStorage.getItem('accessToken');
@@ -27,8 +33,11 @@ export const DataProvider = ({ children }) => {
 
     // Helper for authorized fetch
     const authFetch = async (url, options = {}) => {
+        // Ensure URL starts with BASE_URL if it's an API call
+        const fullUrl = url.startsWith('http') ? url : `${BASE_URL}${url}`;
+
         const headers = getAuthHeaders();
-        const res = await fetch(url, { ...options, headers: { ...headers, ...options.headers } });
+        const res = await fetch(fullUrl, { ...options, headers: { ...headers, ...options.headers } });
         if (res.status === 401) {
             // Token expired or invalid
             console.warn("Unauthorized access - redirecting to login");
@@ -47,13 +56,13 @@ export const DataProvider = ({ children }) => {
 
         try {
             const [farmersRes, landsRes, deliveriesRes, warehousesRes, pricesRes, paymentsRes, productsRes] = await Promise.all([
-                authFetch('http://localhost:8000/api/farmers/'),
-                authFetch('http://localhost:8000/api/lands/'),
-                authFetch('http://localhost:8000/api/deliveries/'),
-                authFetch('http://localhost:8000/api/warehouses/'),
-                authFetch('http://localhost:8000/api/prices/'),
-                authFetch('http://localhost:8000/api/payments/'),
-                authFetch('http://localhost:8000/api/products/')
+                authFetch('/api/farmers/'),
+                authFetch('/api/lands/'),
+                authFetch('/api/deliveries/'),
+                authFetch('/api/warehouses/'),
+                authFetch('/api/prices/'),
+                authFetch('/api/payments/'),
+                authFetch('/api/products/'),
             ]);
 
             const farmersData = await farmersRes.json();
@@ -86,7 +95,7 @@ export const DataProvider = ({ children }) => {
     // Actions
     const addFarmer = useCallback(async (farmer) => {
         try {
-            const res = await authFetch('http://localhost:8000/api/farmers/', {
+            const res = await authFetch('/api/farmers/', {
                 method: 'POST',
                 body: JSON.stringify(farmer)
             });
@@ -103,7 +112,7 @@ export const DataProvider = ({ children }) => {
 
     const deleteFarmer = useCallback(async (id) => {
         try {
-            await authFetch(`http://localhost:8000/api/farmers/${id}/`, { method: 'DELETE' });
+            await authFetch(`/api/farmers/${id}/`, { method: 'DELETE' });
             setFarmers(prev => prev.filter(f => f.id !== id));
         } catch (error) {
             console.error("Error deleting farmer:", error);
@@ -113,7 +122,7 @@ export const DataProvider = ({ children }) => {
 
     const addLand = async (land) => {
         try {
-            const res = await authFetch('http://localhost:8000/api/lands/', {
+            const res = await authFetch('/api/lands/', {
                 method: 'POST',
                 body: JSON.stringify(land)
             });
@@ -129,7 +138,7 @@ export const DataProvider = ({ children }) => {
 
     const addDelivery = async (delivery) => {
         try {
-            const res = await authFetch('http://localhost:8000/api/deliveries/', {
+            const res = await authFetch('/api/deliveries/', {
                 method: 'POST',
                 body: JSON.stringify(delivery)
             });
@@ -156,7 +165,7 @@ export const DataProvider = ({ children }) => {
 
     const updateFarmer = async (id, updatedData) => {
         try {
-            const res = await authFetch(`http://localhost:8000/api/farmers/${id}/`, {
+            const res = await authFetch(`/api/farmers/${id}/`, {
                 method: 'PUT',
                 body: JSON.stringify(updatedData)
             });
@@ -173,7 +182,7 @@ export const DataProvider = ({ children }) => {
 
     const deleteLand = async (id) => {
         try {
-            await authFetch(`http://localhost:8000/api/lands/${id}/`, { method: 'DELETE' });
+            await authFetch(`/api/lands/${id}/`, { method: 'DELETE' });
             setLands(lands.filter(l => l.id !== id));
         } catch (error) {
             console.error("Error deleting land:", error);
@@ -182,7 +191,7 @@ export const DataProvider = ({ children }) => {
 
     const updateLand = async (id, updatedData) => {
         try {
-            const res = await authFetch(`http://localhost:8000/api/lands/${id}/`, {
+            const res = await authFetch(`/api/lands/${id}/`, {
                 method: 'PUT',
                 body: JSON.stringify(updatedData)
             });
@@ -199,7 +208,7 @@ export const DataProvider = ({ children }) => {
 
     const deleteDelivery = async (id) => {
         try {
-            await authFetch(`http://localhost:8000/api/deliveries/${encodeURIComponent(id)}/`, { method: 'DELETE' });
+            await authFetch(`/api/deliveries/${encodeURIComponent(id)}/`, { method: 'DELETE' });
             setDeliveries(deliveries.filter(d => d.id !== id));
         } catch (error) {
             console.error("Error deleting delivery:", error);
@@ -208,7 +217,7 @@ export const DataProvider = ({ children }) => {
 
     const updateDelivery = async (id, updates) => {
         try {
-            const response = await authFetch(`http://localhost:8000/api/deliveries/${encodeURIComponent(id)}/`, {
+            const response = await authFetch(`/api/deliveries/${encodeURIComponent(id)}/`, {
                 method: 'PATCH',
                 body: JSON.stringify(updates)
             });
@@ -237,7 +246,7 @@ export const DataProvider = ({ children }) => {
 
     const addWarehouse = async (warehouse) => {
         try {
-            const res = await authFetch('http://localhost:8000/api/warehouses/', {
+            const res = await authFetch('/api/warehouses/', {
                 method: 'POST',
                 body: JSON.stringify(warehouse)
             });
@@ -253,7 +262,7 @@ export const DataProvider = ({ children }) => {
 
     const updateWarehouse = async (id, updatedData) => {
         try {
-            const res = await authFetch(`http://localhost:8000/api/warehouses/${id}/`, {
+            const res = await authFetch(`/api/warehouses/${id}/`, {
                 method: 'PUT',
                 body: JSON.stringify(updatedData)
             });
@@ -270,7 +279,7 @@ export const DataProvider = ({ children }) => {
 
     const deleteWarehouse = async (id) => {
         try {
-            await authFetch(`http://localhost:8000/api/warehouses/${id}/`, { method: 'DELETE' });
+            await authFetch(`/api/warehouses/${id}/`, { method: 'DELETE' });
             setWarehouses(warehouses.filter(w => w.id !== id));
         } catch (error) {
             console.error("Error deleting warehouse:", error);
@@ -279,7 +288,7 @@ export const DataProvider = ({ children }) => {
 
     const updatePrice = async (quality, price) => {
         try {
-            const res = await authFetch('http://localhost:8000/api/prices_update', {
+            const res = await authFetch('/api/prices_update', {
                 method: 'PUT',
                 body: JSON.stringify({ quality, price })
             });
@@ -296,7 +305,7 @@ export const DataProvider = ({ children }) => {
 
     const addPayment = async (paymentData) => {
         try {
-            const response = await authFetch('http://localhost:8000/api/payments/', {
+            const response = await authFetch('/api/payments/', {
                 method: 'POST',
                 body: JSON.stringify(paymentData)
             });
@@ -313,7 +322,7 @@ export const DataProvider = ({ children }) => {
 
     const deletePayment = async (id) => {
         try {
-            await authFetch(`http://localhost:8000/api/payments/${id}/`, { method: 'DELETE' });
+            await authFetch(`/api/payments/${id}/`, { method: 'DELETE' });
             setPayments(payments.filter(p => p.id !== id));
         } catch (error) {
             console.error("Error deleting payment:", error);

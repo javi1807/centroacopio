@@ -19,8 +19,11 @@ const LoginPage = () => {
         const username = e.target.username.value;
         const password = e.target.password.value;
 
+        // Base URL logic: empty string for prod (relative), localhost for dev
+        const BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '' : 'http://localhost:8000');
+
         try {
-            const response = await fetch('http://localhost:8000/api/token/', {
+            const response = await fetch(`${BASE_URL}/api/token/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
