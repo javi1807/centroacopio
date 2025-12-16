@@ -25,7 +25,7 @@ SECRET_KEY = "django-insecure-x)hlx+igabyhistxj%231=a-duwqx4tdyz+c)z4%9xv)&#8920
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['.vercel.app', '.now.sh', 'localhost', '127.0.0.1']
 
 
 # Application definition
@@ -44,6 +44,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware", # Add WhiteNoise here
     "django.contrib.sessions.middleware.SessionMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -77,41 +78,32 @@ WSGI_APPLICATION = "agrosync_backend.wsgi.application"
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 import os
+import dj_database_url
 
 # ==========================================
 # CONFIGURACIÓN DE BASE DE DATOS
 # ==========================================
 
-# 1. Cambia esto a True para conectar a PostgreSQL
-USAR_POSTGRES = True
+# Database configuration
+# If DATABASE_URL is present (Vercel/Production), use it.
+# Otherwise, fall back to SQLite or local Postgres if configured.
 
-# 2. Ingresa tus credenciales de PostgreSQL aquí:
-PG_DB_NAME = 'Agrosync_acopio'       # Nombre de tu base de datos
-PG_USER = 'postgres'          # Tu usuario (ej. postgres)
-PG_PASSWORD = 'javier' # Tu contraseña
-PG_HOST = 'localhost'
-PG_PORT = '5432'
-
-if USAR_POSTGRES or os.environ.get('DB_ENGINE') == 'postgres':
+if 'DATABASE_URL' in os.environ:
     DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.postgresql",
-            "NAME": PG_DB_NAME,
-            "USER": PG_USER,
-            "PASSWORD": PG_PASSWORD,
-            "HOST": PG_HOST,
-            "PORT": PG_PORT,
-        }
+        'default': dj_database_url.config(
+            default=os.environ.get('DATABASE_URL'),
+            conn_max_age=600
+        )
     }
+    DATABASES['default']['ENGINE'] = 'django.db.backends.postgresql'
 else:
-    # Por defecto usa SQLite
+    # Por defecto usa SQLite para desarrollo local si no hay DATABASE_URL
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
             "NAME": BASE_DIR / "db.sqlite3",
         }
     }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
@@ -148,13 +140,15 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = "static/"
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_ORIGINS = True # Allow all for now, or restrict to frontend URL in prod
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
